@@ -21,6 +21,19 @@ pub fn decode_meta_key(key: &[u8]) -> String {
     String::from_utf8(key[1..].to_vec()).unwrap()
 }
 
+pub fn encode_data_key_map_field(key_id: u64, field: &str) -> BytesMut {
+    let field = field.as_bytes();
+    let mut buf = BytesMut::with_capacity(9 + field.len());
+    buf.put_slice(*PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf.put_slice(field);
+    buf
+}
+
+pub fn decode_data_key_map_field(key: &[u8]) -> String {
+    String::from_utf8(key[9..].to_vec()).unwrap()
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum KeyType {
     Map,
@@ -60,7 +73,12 @@ pub struct KeyMeta {
 
 impl KeyMeta {
     pub fn new(id: u64, key_type: KeyType) -> KeyMeta {
-        KeyMeta { id, count: 0, key_type, extra: None }
+        KeyMeta {
+            id,
+            count: 0,
+            key_type,
+            extra: None,
+        }
     }
 
     pub fn from_bytes(input: &[u8]) -> KeyMeta {
@@ -68,8 +86,17 @@ impl KeyMeta {
         let id = buf.get_u64();
         let key_type = KeyType::from_u8(buf.get_u8()).unwrap_or(KeyType::Map);
         let count = buf.get_u64();
-        let extra = if buf.remaining() > 0 { Some(buf.bytes().to_vec()) } else { None };
-        KeyMeta { id, key_type, count, extra }
+        let extra = if buf.remaining() > 0 {
+            Some(buf.bytes().to_vec())
+        } else {
+            None
+        };
+        KeyMeta {
+            id,
+            key_type,
+            count,
+            extra,
+        }
     }
 
     pub fn get_bytes(&self) -> BytesMut {
@@ -77,7 +104,9 @@ impl KeyMeta {
         buf.put_u64(self.id);
         buf.put_u8(self.key_type.to_u8());
         buf.put_u64(self.count);
-        if let Some(b) = &self.extra { buf.put_slice(b) }
+        if let Some(b) = &self.extra {
+            buf.put_slice(b)
+        }
         buf
     }
 
@@ -87,7 +116,9 @@ impl KeyMeta {
             let left = buf.get_i64();
             let right = buf.get_i64();
             Some((left, right))
-        } else { None }
+        } else {
+            None
+        }
     }
     pub fn encode_list_extra(&mut self, left: i64, right: i64) {
         let mut buf = BytesMut::with_capacity(16);

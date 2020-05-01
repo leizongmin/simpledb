@@ -1,8 +1,11 @@
-use rocksdb::{DB, Direction, Error, IteratorMode, Options};
+use rocksdb::{Direction, Error, IteratorMode, Options, DB};
 
 use crate::encoding::{has_prefix, KeyType};
 
-use super::encoding::{decode_meta_key, encode_meta_key, KeyMeta, PREFIX_META};
+use super::encoding::{
+    decode_data_key_map_field, decode_meta_key, encode_data_key_map_field, encode_meta_key,
+    KeyMeta, PREFIX_META,
+};
 
 pub struct Database {
     pub path: String,
@@ -35,8 +38,13 @@ impl Database {
         self.next_key_id = last_key_id + 1;
     }
 
-    fn prefix_iterator<F>(&self, prefix: &[u8], mut f: F) where F: FnMut(Box<[u8]>, Box<[u8]>) -> bool {
-        let iter = self.db.iterator(IteratorMode::From(prefix, Direction::Forward));
+    fn prefix_iterator<F>(&self, prefix: &[u8], mut f: F)
+    where
+        F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
+    {
+        let iter = self
+            .db
+            .iterator(IteratorMode::From(prefix, Direction::Forward));
         for (k, v) in iter {
             if !has_prefix(prefix, k.as_ref()) {
                 break;
@@ -52,11 +60,16 @@ impl Database {
     }
 
     pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>, Error> {
-        self.db.get(encode_meta_key(key))
+        self.db
+            .get(encode_meta_key(key))
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))
     }
 
-    pub fn get_or_create_meta(&mut self, key: &str, key_type: KeyType) -> Result<Option<KeyMeta>, Error> {
+    pub fn get_or_create_meta(
+        &mut self,
+        key: &str,
+        key_type: KeyType,
+    ) -> Result<Option<KeyMeta>, Error> {
         let m = self.get_meta(key)?;
         if let None = m {
             let m = KeyMeta::new(self.next_key_id, key_type);
@@ -69,32 +82,46 @@ impl Database {
     }
 
     pub fn for_each_key<F>(&self, mut f: F) -> usize
-        where F: FnMut(&str, &KeyMeta) -> bool {
+    where
+        F: FnMut(&str, &KeyMeta) -> bool,
+    {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
             counter = counter + 1;
-            f(decode_meta_key(k.as_ref()).as_str(), &KeyMeta::from_bytes(v.as_ref()))
+            f(
+                decode_meta_key(k.as_ref()).as_str(),
+                &KeyMeta::from_bytes(v.as_ref()),
+            )
         });
         counter
     }
 
     pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) -> usize
-        where F: FnMut(&str, &KeyMeta) -> bool {
+    where
+        F: FnMut(&str, &KeyMeta) -> bool,
+    {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
             counter = counter + 1;
             if counter > limit {
                 false
             } else {
-                f(decode_meta_key(k.as_ref()).as_str(), &KeyMeta::from_bytes(v.as_ref()))
+                f(
+                    decode_meta_key(k.as_ref()).as_str(),
+                    &KeyMeta::from_bytes(v.as_ref()),
+                )
             }
         });
         counter
     }
 
-    // pub fn map_put<V>(&self, key: &str, field: &str, value: V) -> Result<(), Error>
-    //     where V: AsRef<[u8]> {
-    //     self.db.put()
-    //     Ok(())
-    // }
+    pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<(), Error> {
+        let mut meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
+        let full_key = encode_data_key_map_field(meta.id, field);
+        if self.db.get(&full_key)?.is_some() {
+            meta.count += 1;
+        }
+        self.db.put(&full_key, value)?;
+        self.save_meta(key, &meta)
+    }
 }
