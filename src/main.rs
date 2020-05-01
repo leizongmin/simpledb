@@ -1,18 +1,15 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::borrow::Borrow;
 use std::env::temp_dir;
-use std::ops::Sub;
-use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bytes::{Buf, BufMut, BytesMut};
 use rocksdb::{DB, Direction, Error, IteratorMode, Options};
 
 lazy_static! {
-    static ref PREFIX_META: &'static [u8] = "m".as_bytes();
-    static ref PREFIX_DATA: &'static [u8] = "d".as_bytes();
+    static ref PREFIX_META: &'static [u8] = b"m";
+    static ref PREFIX_DATA: &'static [u8] = b"d";
 }
 
 fn main() {
@@ -52,6 +49,7 @@ fn main() {
 
     let mut m = Meta::new(123);
     m.count = 456;
+    m.extra = Some("hello,world".as_bytes().to_vec());
     db.save_meta("hello", &m).unwrap();
     let m2 = db.get_meta("hello").unwrap();
     println!("{:?}", m2);
@@ -114,28 +112,31 @@ impl Database {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Meta {
     pub id: u64,
     pub count: u64,
+    pub extra: Option<Vec<u8>>,
 }
 
 impl Meta {
     pub fn new(id: u64) -> Meta {
-        Meta { id, count: 0 }
+        Meta { id, count: 0, extra: None }
     }
 
     pub fn from_bytes(input: &[u8]) -> Meta {
         let mut buf = input;
         let id = buf.get_u64();
         let count = buf.get_u64();
-        Meta { id, count }
+        let extra = if buf.remaining() > 0 { Some(buf.bytes().to_vec()) } else { None };
+        Meta { id, count, extra }
     }
 
     pub fn get_bytes(&self) -> BytesMut {
         let mut buf = BytesMut::with_capacity(16);
         buf.put_u64(self.id);
         buf.put_u64(self.count);
+        if let Some(b) = &self.extra { buf.put_slice(b) }
         buf
     }
 }
