@@ -24,7 +24,9 @@ mod tests {
     fn get_random_database_path() -> String {
         unsafe { CREATED_DB_COUNT = CREATED_DB_COUNT + 1 }
         let path = temp_dir().as_path()
-            .join(format!("test-cedar-rs-{}", unsafe { CREATED_DB_COUNT }));
+            .join(format!("test-cedar-rs-{}-{}",
+                          SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis(),
+                          unsafe { CREATED_DB_COUNT }));
         String::from(path.to_str().unwrap())
     }
 
