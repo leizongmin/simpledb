@@ -1,6 +1,6 @@
-use rocksdb::{Direction, Error, IteratorMode, Options, DB};
+use rocksdb::{DB, Direction, Error, IteratorMode, Options};
 
-use crate::encoding::{has_prefix, KeyType};
+use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
 use super::encoding::{
     decode_data_key_map_field, decode_meta_key, encode_data_key_map_field, encode_meta_key,
@@ -39,8 +39,8 @@ impl Database {
     }
 
     fn prefix_iterator<F>(&self, prefix: &[u8], mut f: F)
-    where
-        F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
+        where
+            F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
     {
         let iter = self
             .db
@@ -56,7 +56,11 @@ impl Database {
     }
 
     pub fn save_meta(&self, key: &str, meta: &KeyMeta) -> Result<(), Error> {
-        self.db.put(encode_meta_key(key), meta.get_bytes())
+        if meta.count > 0 {
+            self.db.put(encode_meta_key(key), meta.get_bytes())
+        } else {
+            self.db.delete(encode_meta_key(key))
+        }
     }
 
     pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>, Error> {
@@ -82,8 +86,8 @@ impl Database {
     }
 
     pub fn for_each_key<F>(&self, mut f: F) -> usize
-    where
-        F: FnMut(&str, &KeyMeta) -> bool,
+        where
+            F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
@@ -97,8 +101,8 @@ impl Database {
     }
 
     pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) -> usize
-    where
-        F: FnMut(&str, &KeyMeta) -> bool,
+        where
+            F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
@@ -115,13 +119,86 @@ impl Database {
         counter
     }
 
+    pub fn for_each_data<F>(&self, key: &str, mut f: F) -> Result<u64, Error> where
+        F: FnMut(Box<[u8]>, Box<[u8]>) -> bool {
+        let meta = self.get_meta(key)?;
+        match meta {
+            Some(meta) => {
+                if meta.count > 0 {
+                    let mut counter = 0;
+                    self.prefix_iterator(encode_data_key(meta.id).as_ref(), |k, v| {
+                        counter += 1;
+                        f(k, v)
+                    });
+                    Ok(counter)
+                } else {
+                    Ok(0)
+                }
+            }
+            None => Ok(0)
+        }
+    }
+
+    pub fn get_count(&self, key: &str) -> Result<u64, Error> {
+        let meta = self.get_meta(key)?;
+        Ok(match meta {
+            Some(m) => m.count,
+            _ => 0,
+        })
+    }
+
+    pub fn map_count(&self, key: &str) -> Result<u64, Error> {
+        self.get_count(key)
+    }
+
+    pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>, Error> {
+        let mut meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
+        let full_key = encode_data_key_map_field(meta.id, field);
+        self.db.get(full_key)
+    }
+
     pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<(), Error> {
         let mut meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
         let full_key = encode_data_key_map_field(meta.id, field);
-        if self.db.get(&full_key)?.is_some() {
+        if self.db.get(&full_key)?.is_none() {
             meta.count += 1;
         }
         self.db.put(&full_key, value)?;
         self.save_meta(key, &meta)
+    }
+
+    pub fn map_delete(&mut self, key: &str, field: &str) -> Result<bool, Error> {
+        let meta = self.get_meta(key)?;
+        if meta.is_none() {
+            Ok(false)
+        } else {
+            let mut meta = meta.unwrap();
+            let full_key = encode_data_key_map_field(meta.id, field);
+            if self.db.get(&full_key)?.is_some() {
+                meta.count -= 1;
+                self.db.delete(&full_key)?;
+                self.save_meta(key, &meta);
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+    }
+
+    pub fn map_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error> where F: FnMut(&str, &[u8]) -> bool {
+        self.for_each_data(key, |k, v| {
+            let k = decode_data_key_map_field(k.as_ref());
+            f(&k, v.as_ref())
+        })
+    }
+
+    pub fn map_items(&mut self, key: &str) -> Result<Vec<(String, Vec<u8>)>, Error> {
+        let count = self.get_count(key)?;
+        let mut vec = Vec::with_capacity(count as u64 as usize);
+        self.map_for_each(key, |f, v| {
+            vec.push((String::from(f), v.to_vec()));
+            true
+        });
+        Ok(vec)
     }
 }

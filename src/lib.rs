@@ -16,8 +16,8 @@ mod tests {
     static mut CREATED_DB_COUNT: usize = 0;
 
     fn benchmark_test_case<F>(title: &str, mut f: F)
-    where
-        F: FnMut(),
+        where
+            F: FnMut(),
     {
         println!("start {}...", title);
         let start = SystemTime::now()
@@ -58,10 +58,23 @@ mod tests {
     }
 
     fn dump_database_meta(db: &Database) {
+        println!("dump_database_meta:");
         db.for_each_key(|k, m| {
             println!("key: {:?}\t value: {:?}", k, m);
             true
         });
+    }
+
+    fn dump_database_data(db: &Database, key: &str) {
+        println!("dump_database_data:");
+        db.for_each_data(key, |k, m| {
+            println!("key: {:?}\t value: {:?}", k, m);
+            true
+        });
+    }
+
+    fn vec_to_str(vec: Vec<u8>) -> String {
+        String::from_utf8(vec).unwrap()
     }
 
     #[test]
@@ -113,12 +126,47 @@ mod tests {
         let path = get_random_database_path();
         {
             let mut db = open_database_with_path(&path);
+            let key = "hello";
 
-            db.map_put("hello", "aaa", "123".as_bytes()).unwrap();
-            db.map_put("hello", "bbb", "456".as_bytes()).unwrap();
-            db.map_put("hello", "ccc", "789".as_bytes()).unwrap();
+            assert_eq!(0, db.map_count(key).unwrap());
+            assert!(db.map_get(key, "aaa").unwrap().is_none());
+            assert!(db.map_get(key, "bbb").unwrap().is_none());
+            assert!(db.map_get(key, "ccc").unwrap().is_none());
+
+            db.map_put(key, "aaa", "123".as_bytes()).unwrap();
+            db.map_put(key, "bbb", "456".as_bytes()).unwrap();
+            db.map_put(key, "ccc", "789".as_bytes()).unwrap();
+            assert_eq!(3, db.map_count(key).unwrap());
 
             dump_database_meta(&db);
+            dump_database_data(&db, key);
+
+            assert_eq!("123", vec_to_str(db.map_get(key, "aaa").unwrap().unwrap()));
+            assert_eq!("456", vec_to_str(db.map_get(key, "bbb").unwrap().unwrap()));
+            assert_eq!("789", vec_to_str(db.map_get(key, "ccc").unwrap().unwrap()));
+
+            let vec = db.map_items(key).unwrap();
+            assert_eq!(3, vec.len());
+            let (f, v) = vec.get(0).unwrap();
+            assert_eq!("aaa", f);
+            assert_eq!("123", vec_to_str(v.to_vec()));
+
+            assert_eq!(true, db.map_delete(key, "aaa").unwrap());
+            assert_eq!(true, db.map_delete(key, "bbb").unwrap());
+            assert_eq!(false, db.map_delete(key, "ddd").unwrap());
+            assert_eq!(1, db.map_count(key).unwrap());
+
+            dump_database_meta(&db);
+            dump_database_data(&db, key);
+
+            assert_eq!(true, db.map_delete(key, "ccc").unwrap());
+
+            let mut counter = 0;
+            db.for_each_key(|k, m| {
+                counter += 1;
+                true
+            });
+            assert_eq!(0, counter);
         }
     }
 }

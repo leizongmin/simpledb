@@ -1,5 +1,4 @@
 use bytes::{Buf, BufMut, BytesMut};
-use rocksdb::compaction_filter::Decision::Keep;
 
 lazy_static! {
     pub static ref PREFIX_META: &'static [u8] = b"m";
@@ -19,6 +18,13 @@ pub fn encode_meta_key(key: &str) -> BytesMut {
 
 pub fn decode_meta_key(key: &[u8]) -> String {
     String::from_utf8(key[1..].to_vec()).unwrap()
+}
+
+pub fn encode_data_key(key_id: u64) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(9);
+    buf.put_slice(*PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf
 }
 
 pub fn encode_data_key_map_field(key_id: u64, field: &str) -> BytesMut {
