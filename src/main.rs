@@ -51,8 +51,12 @@ fn main() {
     m.count = 456;
     m.extra = Some("hello,world".as_bytes().to_vec());
     db.save_meta("hello", &m).unwrap();
-    let m2 = db.get_meta("hello").unwrap();
+    let mut m2 = db.get_meta("hello").unwrap().unwrap();
     println!("{:?}", m2);
+    m2.encode_list_extra(8888, 9999);
+    db.save_meta("world", &m2).unwrap();
+    let m3 = db.get_meta("world").unwrap().unwrap();
+    println!("{:?} {:?}", m3, m3.decode_list_extra());
 
     db.for_each_key(|k, m| println!("{} = {:?}", k, m))
 }
@@ -138,6 +142,21 @@ impl Meta {
         buf.put_u64(self.count);
         if let Some(b) = &self.extra { buf.put_slice(b) }
         buf
+    }
+
+    pub fn decode_list_extra(&self) -> Option<(i64, i64)> {
+        if let Some(b) = &self.extra {
+            let mut buf = b.as_slice();
+            let left = buf.get_i64();
+            let right = buf.get_i64();
+            Some((left, right))
+        } else { None }
+    }
+    pub fn encode_list_extra(&mut self, left: i64, right: i64) {
+        let mut buf = BytesMut::with_capacity(16);
+        buf.put_i64(left);
+        buf.put_i64(right);
+        self.extra = Some(buf.to_vec());
     }
 }
 
