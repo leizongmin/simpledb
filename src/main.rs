@@ -17,36 +17,46 @@ lazy_static! {
 
 fn main() {
     let path = temp_dir().as_path().join("test-cedar-rs");
-    let db = Database::open(path.to_str().unwrap()).unwrap();
+    let path = path.to_str().unwrap();
+    Database::destroy(path).unwrap();
+    let db = Database::open(path).unwrap();
     println!("open database: {}", db.path);
 
-    let mut m = Meta::new(1);
-    m.count = 20;
-    let mut buf = m.get_bytes();
-    println!("{:?}", m);
-    println!("{:?}", buf);
-    let mut m2 = Meta::from_bytes(buf.as_mut());
+    // let mut m = Meta::new(1);
+    // m.count = 20;
+    // let mut buf = m.get_bytes();
+    // println!("{:?}", m);
+    // println!("{:?}", buf);
+    // let mut m2 = Meta::from_bytes(buf.as_mut());
+    // println!("{:?}", m2);
+    //
+    // benchmark_test_case("save meta / 10_0000 times", || {
+    //     for i in 0..10_0000 {
+    //         let m = Meta::new(i);
+    //         db.save_meta(&format!("key_{}", i), &m);
+    //     }
+    // });
+    //
+    // // db.for_each_key(|k, v| println!("{:?} = {:?}", k, v));
+    // let mut counter = 0;
+    // db.for_each_key(|k, v| counter = counter + 1);
+    // println!("counter={}", counter);
+    //
+    // benchmark_test_case("for each key with limit 1 / 10_0000 times", || {
+    //     let mut counter = 0;
+    //     for i in 0..10_0000 {
+    //         db.for_each_key_with_limit(1, |k, v| counter = counter + 1)
+    //     }
+    //     println!("counter={}", counter);
+    // });
+
+    let mut m = Meta::new(123);
+    m.count = 456;
+    db.save_meta("hello", &m).unwrap();
+    let m2 = db.get_meta("hello").unwrap();
     println!("{:?}", m2);
 
-    benchmark_test_case("save meta / 10_0000 times", || {
-        for i in 0..10_0000 {
-            let m = Meta::new(i);
-            db.save_meta(&m);
-        }
-    });
-
-    // db.for_each_key(|k, v| println!("{:?} = {:?}", k, v));
-    let mut counter = 0;
-    db.for_each_key(|k, v| counter = counter + 1);
-    println!("counter={}", counter);
-
-    benchmark_test_case("for each key with limit 1 / 10_0000 times", || {
-        let mut counter = 0;
-        for i in 0..10_0000 {
-            db.for_each_key_with_limit(1, |k, v| counter = counter + 1)
-        }
-        println!("counter={}", counter);
-    });
+    db.for_each_key(|k, m| println!("{} = {:?}", k, m))
 }
 
 pub fn benchmark_test_case<F>(title: &str, mut f: F) where F: FnMut() {
@@ -71,18 +81,27 @@ impl Database {
         })
     }
 
-    pub fn save_meta(&self, meta: &Meta) -> Result<(), Error> {
-        self.db.put(encode_meta_key(meta.id), meta.get_bytes())
+    pub fn destroy(path: &str) -> Result<(), Error> {
+        DB::destroy(&Options::default(), path)
     }
 
-    pub fn for_each_key<F>(&self, mut f: F) where F: FnMut(Box<[u8]>, Box<[u8]>) {
+    pub fn save_meta(&self, key: &str, meta: &Meta) -> Result<(), Error> {
+        self.db.put(encode_meta_key(key), meta.get_bytes())
+    }
+
+    pub fn get_meta(&self, key: &str) -> Result<Option<Meta>, Error> {
+        self.db.get(encode_meta_key(key))
+            .map(|v| v.map(|v| Meta::from_bytes(v.as_slice())))
+    }
+
+    pub fn for_each_key<F>(&self, mut f: F) where F: FnMut(&str, &Meta) {
         let iter = self.db.iterator(IteratorMode::From(*PREFIX_META, Direction::Forward));
         for (key, value) in iter {
-            f(key, value);
+            f(decode_meta_key(key.as_ref()).as_str(), &Meta::from_bytes(value.as_ref()))
         }
     }
 
-    pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) where F: FnMut(Box<[u8]>, Box<[u8]>) {
+    pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) where F: FnMut(&str, &Meta) {
         let mut counter: usize = 0;
         let iter = self.db.iterator(IteratorMode::From(*PREFIX_META, Direction::Forward));
         for (key, value) in iter {
@@ -90,12 +109,12 @@ impl Database {
             if counter > limit {
                 break;
             }
-            f(key, value);
+            f(decode_meta_key(key.as_ref()).as_str(), &Meta::from_bytes(value.as_ref()))
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Meta {
     pub id: u64,
     pub count: u64,
@@ -121,9 +140,13 @@ impl Meta {
     }
 }
 
-pub fn encode_meta_key(id: u64) -> BytesMut {
+pub fn encode_meta_key(key: &str) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
     buf.put_slice(*PREFIX_META);
-    buf.put_u64(id);
+    buf.put_slice(key.as_bytes());
     buf
+}
+
+pub fn decode_meta_key(key: &[u8]) -> String {
+    String::from_utf8(key[1..].to_vec()).unwrap()
 }
