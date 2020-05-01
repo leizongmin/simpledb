@@ -9,11 +9,12 @@ mod tests {
     use std::env::temp_dir;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use rand::prelude::ThreadRng;
+    use rand::Rng;
+
     use crate::encoding::KeyType;
 
     use super::database::Database;
-
-    static mut CREATED_DB_COUNT: usize = 0;
 
     fn benchmark_test_case<F>(title: &str, mut f: F)
         where
@@ -33,14 +34,14 @@ mod tests {
     }
 
     fn get_random_database_path() -> String {
-        unsafe { CREATED_DB_COUNT = CREATED_DB_COUNT + 1 }
+        let r: i32 = rand::thread_rng().gen();
         let path = temp_dir().as_path().join(format!(
             "test-cedar-rs-{}-{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_millis(),
-            unsafe { CREATED_DB_COUNT }
+            r
         ));
         String::from(path.to_str().unwrap())
     }

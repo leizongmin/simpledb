@@ -55,11 +55,11 @@ impl Database {
         }
     }
 
-    pub fn save_meta(&self, key: &str, meta: &KeyMeta) -> Result<(), Error> {
-        if meta.count > 0 {
-            self.db.put(encode_meta_key(key), meta.get_bytes())
-        } else {
+    pub fn save_meta(&self, key: &str, meta: &KeyMeta, delete_if_empty: bool) -> Result<(), Error> {
+        if delete_if_empty && meta.count < 1 {
             self.db.delete(encode_meta_key(key))
+        } else {
+            self.db.put(encode_meta_key(key), meta.get_bytes())
         }
     }
 
@@ -78,7 +78,7 @@ impl Database {
         if let None = m {
             let m = KeyMeta::new(self.next_key_id, key_type);
             self.next_key_id += 1;
-            self.save_meta(key, &m)?;
+            self.save_meta(key, &m, false)?;
             Ok(Some(m))
         } else {
             Ok(m)
@@ -119,8 +119,9 @@ impl Database {
         counter
     }
 
-    pub fn for_each_data<F>(&self, key: &str, mut f: F) -> Result<u64, Error> where
-        F: FnMut(Box<[u8]>, Box<[u8]>) -> bool {
+    pub fn for_each_data<F>(&self, key: &str, mut f: F) -> Result<u64, Error>
+        where
+            F: FnMut(Box<[u8]>, Box<[u8]>) -> bool {
         let meta = self.get_meta(key)?;
         match meta {
             Some(meta) => {
@@ -164,7 +165,7 @@ impl Database {
             meta.count += 1;
         }
         self.db.put(&full_key, value)?;
-        self.save_meta(key, &meta)
+        self.save_meta(key, &meta, false)
     }
 
     pub fn map_delete(&mut self, key: &str, field: &str) -> Result<bool, Error> {
@@ -177,7 +178,7 @@ impl Database {
             if self.db.get(&full_key)?.is_some() {
                 meta.count -= 1;
                 self.db.delete(&full_key)?;
-                self.save_meta(key, &meta);
+                self.save_meta(key, &meta, true);
                 Ok(true)
             } else {
                 Ok(false)
@@ -185,7 +186,9 @@ impl Database {
         }
     }
 
-    pub fn map_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error> where F: FnMut(&str, &[u8]) -> bool {
+    pub fn map_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
+        where
+            F: FnMut(&str, &[u8]) -> bool {
         self.for_each_data(key, |k, v| {
             let k = decode_data_key_map_field(k.as_ref());
             f(&k, v.as_ref())
