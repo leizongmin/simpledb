@@ -1,6 +1,6 @@
 use rocksdb::{DB, Direction, Error, IteratorMode, Options};
 
-use crate::encoding::has_prefix;
+use crate::encoding::{has_prefix, KeyType};
 
 use super::encoding::{decode_meta_key, encode_meta_key, KeyMeta, PREFIX_META};
 
@@ -56,10 +56,10 @@ impl Database {
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))
     }
 
-    pub fn get_or_create_meta(&mut self, key: &str) -> Result<Option<KeyMeta>, Error> {
+    pub fn get_or_create_meta(&mut self, key: &str, key_type: KeyType) -> Result<Option<KeyMeta>, Error> {
         let m = self.get_meta(key)?;
         if let None = m {
-            let m = KeyMeta::new(self.next_key_id);
+            let m = KeyMeta::new(self.next_key_id, key_type);
             self.next_key_id += 1;
             self.save_meta(key, &m)?;
             Ok(Some(m))

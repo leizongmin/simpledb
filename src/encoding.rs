@@ -1,4 +1,5 @@
 use bytes::{Buf, BufMut, BytesMut};
+use rocksdb::compaction_filter::Decision::Keep;
 
 lazy_static! {
     pub static ref PREFIX_META: &'static [u8] = b"m";
@@ -20,29 +21,61 @@ pub fn decode_meta_key(key: &[u8]) -> String {
     String::from_utf8(key[1..].to_vec()).unwrap()
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum KeyType {
+    Map,
+    List,
+    SortedList,
+    Set,
+}
+
+impl KeyType {
+    pub fn from_u8(c: u8) -> Option<KeyType> {
+        match c {
+            1 => Some(KeyType::Map),
+            2 => Some(KeyType::List),
+            3 => Some(KeyType::SortedList),
+            4 => Some(KeyType::Set),
+            _ => None,
+        }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            KeyType::Map => 1,
+            KeyType::List => 2,
+            KeyType::SortedList => 3,
+            KeyType::Set => 4,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct KeyMeta {
     pub id: u64,
+    pub key_type: KeyType,
     pub count: u64,
     pub extra: Option<Vec<u8>>,
 }
 
 impl KeyMeta {
-    pub fn new(id: u64) -> KeyMeta {
-        KeyMeta { id, count: 0, extra: None }
+    pub fn new(id: u64, key_type: KeyType) -> KeyMeta {
+        KeyMeta { id, count: 0, key_type, extra: None }
     }
 
     pub fn from_bytes(input: &[u8]) -> KeyMeta {
         let mut buf = input;
         let id = buf.get_u64();
+        let key_type = KeyType::from_u8(buf.get_u8()).unwrap_or(KeyType::Map);
         let count = buf.get_u64();
         let extra = if buf.remaining() > 0 { Some(buf.bytes().to_vec()) } else { None };
-        KeyMeta { id, count, extra }
+        KeyMeta { id, key_type, count, extra }
     }
 
     pub fn get_bytes(&self) -> BytesMut {
         let mut buf = BytesMut::with_capacity(16);
         buf.put_u64(self.id);
+        buf.put_u8(self.key_type.to_u8());
         buf.put_u64(self.count);
         if let Some(b) = &self.extra { buf.put_slice(b) }
         buf
