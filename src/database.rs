@@ -2,7 +2,7 @@ use rocksdb::{DB, Direction, Error, IteratorMode, Options};
 
 use crate::encoding::has_prefix;
 
-use super::encoding::{decode_meta_key, encode_meta_key, Meta, PREFIX_META};
+use super::encoding::{decode_meta_key, encode_meta_key, KeyMeta, PREFIX_META};
 
 pub struct Database {
     pub path: String,
@@ -47,19 +47,19 @@ impl Database {
         }
     }
 
-    pub fn save_meta(&self, key: &str, meta: &Meta) -> Result<(), Error> {
+    pub fn save_meta(&self, key: &str, meta: &KeyMeta) -> Result<(), Error> {
         self.db.put(encode_meta_key(key), meta.get_bytes())
     }
 
-    pub fn get_meta(&self, key: &str) -> Result<Option<Meta>, Error> {
+    pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>, Error> {
         self.db.get(encode_meta_key(key))
-            .map(|v| v.map(|v| Meta::from_bytes(v.as_slice())))
+            .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))
     }
 
-    pub fn get_or_create_meta(&mut self, key: &str) -> Result<Option<Meta>, Error> {
+    pub fn get_or_create_meta(&mut self, key: &str) -> Result<Option<KeyMeta>, Error> {
         let m = self.get_meta(key)?;
         if let None = m {
-            let m = Meta::new(self.next_key_id);
+            let m = KeyMeta::new(self.next_key_id);
             self.next_key_id += 1;
             self.save_meta(key, &m)?;
             Ok(Some(m))
@@ -69,26 +69,32 @@ impl Database {
     }
 
     pub fn for_each_key<F>(&self, mut f: F) -> usize
-        where F: FnMut(&str, &Meta) -> bool {
+        where F: FnMut(&str, &KeyMeta) -> bool {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
             counter = counter + 1;
-            f(decode_meta_key(k.as_ref()).as_str(), &Meta::from_bytes(v.as_ref()))
+            f(decode_meta_key(k.as_ref()).as_str(), &KeyMeta::from_bytes(v.as_ref()))
         });
         counter
     }
 
     pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) -> usize
-        where F: FnMut(&str, &Meta) -> bool {
+        where F: FnMut(&str, &KeyMeta) -> bool {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
             counter = counter + 1;
             if counter > limit {
                 false
             } else {
-                f(decode_meta_key(k.as_ref()).as_str(), &Meta::from_bytes(v.as_ref()))
+                f(decode_meta_key(k.as_ref()).as_str(), &KeyMeta::from_bytes(v.as_ref()))
             }
         });
         counter
     }
+
+    // pub fn map_put<V>(&self, key: &str, field: &str, value: V) -> Result<(), Error>
+    //     where V: AsRef<[u8]> {
+    //     self.db.put()
+    //     Ok(())
+    // }
 }

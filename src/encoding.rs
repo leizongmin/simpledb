@@ -21,23 +21,23 @@ pub fn decode_meta_key(key: &[u8]) -> String {
 }
 
 #[derive(Debug, Clone)]
-pub struct Meta {
+pub struct KeyMeta {
     pub id: u64,
     pub count: u64,
     pub extra: Option<Vec<u8>>,
 }
 
-impl Meta {
-    pub fn new(id: u64) -> Meta {
-        Meta { id, count: 0, extra: None }
+impl KeyMeta {
+    pub fn new(id: u64) -> KeyMeta {
+        KeyMeta { id, count: 0, extra: None }
     }
 
-    pub fn from_bytes(input: &[u8]) -> Meta {
+    pub fn from_bytes(input: &[u8]) -> KeyMeta {
         let mut buf = input;
         let id = buf.get_u64();
         let count = buf.get_u64();
         let extra = if buf.remaining() > 0 { Some(buf.bytes().to_vec()) } else { None };
-        Meta { id, count, extra }
+        KeyMeta { id, count, extra }
     }
 
     pub fn get_bytes(&self) -> BytesMut {
