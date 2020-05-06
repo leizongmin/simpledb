@@ -5,6 +5,7 @@ use rand::Rng;
 
 use cedar::database::Database;
 
+#[allow(dead_code)]
 pub fn benchmark_test_case<F>(title: &str, mut f: F)
     where
         F: FnMut(),
@@ -35,6 +36,7 @@ pub fn get_random_database_path() -> String {
     String::from(path.to_str().unwrap())
 }
 
+#[allow(dead_code)]
 pub fn open_database() -> Database {
     let path = get_random_database_path();
     Database::destroy(&path).unwrap();

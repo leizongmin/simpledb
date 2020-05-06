@@ -2,10 +2,7 @@ use rocksdb::{DB, Direction, Error, IteratorMode, Options};
 
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
-use super::encoding::{
-    decode_data_key_map_field, decode_meta_key, encode_data_key_map_field, encode_meta_key,
-    KeyMeta, PREFIX_META,
-};
+use super::encoding::*;
 
 pub struct Database {
     pub path: String,
@@ -200,6 +197,73 @@ impl Database {
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.map_for_each(key, |f, v| {
             vec.push((String::from(f), v.to_vec()));
+            true
+        })?;
+        Ok(vec)
+    }
+
+    pub fn set_count(&self, key: &str) -> Result<u64, Error> {
+        self.get_count(key)
+    }
+
+    pub fn set_add(&mut self, key: &str, value: &[u8]) -> Result<bool, Error> {
+        let mut meta = self.get_or_create_meta(key, KeyType::Set)?.unwrap();
+        let full_key = encode_data_key_set_value(meta.id, value);
+        let mut is_new_item = false;
+        if self.db.get(&full_key)?.is_none() {
+            meta.count += 1;
+            is_new_item = true;
+        }
+        self.db.put(&full_key, *FILL_EMPTY_DATA)?;
+        if is_new_item {
+            self.save_meta(key, &meta, false)?;
+        }
+        Ok(is_new_item)
+    }
+
+    pub fn set_is_member(&mut self, key: &str, value: &[u8]) -> Result<bool, Error> {
+        let meta = self.get_meta(key)?;
+        if meta.is_none() {
+            Ok(false)
+        } else {
+            let meta = meta.unwrap();
+            let full_key = encode_data_key_set_value(meta.id, value);
+            Ok(self.db.get(&full_key)?.is_some())
+        }
+    }
+
+    pub fn set_delete(&mut self, key: &str, value: &[u8]) -> Result<bool, Error> {
+        let meta = self.get_meta(key)?;
+        if meta.is_none() {
+            Ok(false)
+        } else {
+            let mut meta = meta.unwrap();
+            let full_key = encode_data_key_set_value(meta.id, value);
+            if self.db.get(&full_key)?.is_some() {
+                meta.count -= 1;
+                self.db.delete(full_key)?;
+                self.save_meta(key, &meta, true)?;
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+    }
+
+    pub fn set_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
+        where
+            F: FnMut(Box<[u8]>) -> bool {
+        self.for_each_data(key, |k, _| {
+            let value = decode_data_key_set_value(k.as_ref());
+            f(Box::from(value))
+        })
+    }
+
+    pub fn set_items(&mut self, key: &str) -> Result<Vec<Box<[u8]>>, Error> {
+        let count = self.get_count(key)?;
+        let mut vec = Vec::with_capacity(count as u64 as usize);
+        self.set_for_each(key, |v| {
+            vec.push(v);
             true
         })?;
         Ok(vec)

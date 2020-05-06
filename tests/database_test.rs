@@ -95,3 +95,33 @@ fn test_map() {
         assert_eq!(0, counter);
     }
 }
+
+#[test]
+fn test_set() {
+    let path = get_random_database_path();
+    {
+        let mut db = open_database_with_path(&path);
+        let key = "hello";
+
+        assert_eq!(false, db.set_is_member(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(0, db.set_count(key).unwrap());
+
+        assert_eq!(true, db.set_add(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(true, db.set_add(key, "bbb".as_bytes()).unwrap());
+        assert_eq!(false, db.set_add(key, "bbb".as_bytes()).unwrap());
+        assert_eq!(2, db.set_count(key).unwrap());
+        assert_eq!(true, db.set_is_member(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(true, db.set_is_member(key, "bbb".as_bytes()).unwrap());
+
+        let vec = db.set_items(key).unwrap();
+        assert_eq!(2, vec.len());
+        assert_eq!("aaa".as_bytes(), vec.get(0).unwrap().as_ref());
+        assert_eq!("bbb".as_bytes(), vec.get(1).unwrap().as_ref());
+
+        assert_eq!(true, db.set_delete(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(false, db.set_delete(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(1, db.set_count(key).unwrap());
+        assert_eq!(false, db.set_is_member(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(true, db.set_is_member(key, "bbb".as_bytes()).unwrap());
+    }
+}

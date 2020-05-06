@@ -3,6 +3,7 @@ use bytes::{Buf, BufMut, BytesMut};
 lazy_static! {
     pub static ref PREFIX_META: &'static [u8] = b"m";
     pub static ref PREFIX_DATA: &'static [u8] = b"d";
+    pub static ref FILL_EMPTY_DATA: &'static [u8] = b"";
 }
 
 pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
@@ -38,6 +39,18 @@ pub fn encode_data_key_map_field(key_id: u64, field: &str) -> BytesMut {
 
 pub fn decode_data_key_map_field(key: &[u8]) -> String {
     String::from_utf8(key[9..].to_vec()).unwrap()
+}
+
+pub fn encode_data_key_set_value(key_id: u64, value: &[u8]) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(9 + value.len());
+    buf.put_slice(*PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf.put_slice(value);
+    buf
+}
+
+pub fn decode_data_key_set_value(key: &[u8]) -> &[u8] {
+    key[9..].as_ref()
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
