@@ -268,4 +268,90 @@ impl Database {
         })?;
         Ok(vec)
     }
+
+    pub fn list_count(&mut self, key: &str) -> Result<u64, Error> {
+        self.get_count(key)
+    }
+
+    pub fn list_left_push(&mut self, key: &str, value: &[u8]) -> Result<u64, Error> {
+        let mut meta = self.get_or_create_meta(key, KeyType::List)?.unwrap();
+        let (left, right) = meta.decode_list_extra();
+        let full_key = encode_data_key_list_item(meta.id, left);
+        self.db.put(full_key, value)?;
+        meta.encode_list_extra(left - 1, right);
+        meta.count += 1;
+        self.save_meta(key, &meta, false)?;
+        Ok(meta.count)
+    }
+
+    pub fn list_right_push(&mut self, key: &str, value: &[u8]) -> Result<u64, Error> {
+        let mut meta = self.get_or_create_meta(key, KeyType::List)?.unwrap();
+        let (left, right) = meta.decode_list_extra();
+        let full_key = encode_data_key_list_item(meta.id, right);
+        self.db.put(full_key, value)?;
+        meta.encode_list_extra(left, right + 1);
+        meta.count += 1;
+        self.save_meta(key, &meta, false)?;
+        Ok(meta.count)
+    }
+
+    pub fn list_left_pop(&mut self, key: &str) -> Result<Option<Box<[u8]>>, Error> {
+        let meta = self.get_meta(key)?;
+        if meta.is_some() {
+            let mut meta = meta.unwrap();
+            let (left, right) = meta.decode_list_extra();
+            let full_key = encode_data_key_list_item(meta.id, left + 1);
+            match self.db.get(full_key.as_ref())? {
+                Some(value) => {
+                    meta.encode_list_extra(left + 1, right);
+                    meta.count -= 1;
+                    self.save_meta(key, &meta, true)?;
+                    self.db.delete(full_key.as_ref())?;
+                    Ok(Some(Box::from(value)))
+                }
+                None => Ok(None),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn list_right_pop(&mut self, key: &str) -> Result<Option<Box<[u8]>>, Error> {
+        let meta = self.get_meta(key)?;
+        if meta.is_some() {
+            let mut meta = meta.unwrap();
+            let (left, right) = meta.decode_list_extra();
+            let full_key = encode_data_key_list_item(meta.id, right - 1);
+            match self.db.get(full_key.as_ref())? {
+                Some(value) => {
+                    meta.encode_list_extra(left, right - 1);
+                    meta.count -= 1;
+                    self.save_meta(key, &meta, true)?;
+                    self.db.delete(full_key.as_ref())?;
+                    Ok(Some(Box::from(value)))
+                }
+                None => Ok(None),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
+        where
+            F: FnMut(Box<[u8]>) -> bool {
+        self.for_each_data(key, |_, v| {
+            f(Box::from(v))
+        })
+    }
+
+    pub fn list_items(&mut self, key: &str) -> Result<Vec<Box<[u8]>>, Error> {
+        let count = self.get_count(key)?;
+        let mut vec = Vec::with_capacity(count as u64 as usize);
+        self.list_for_each(key, |v| {
+            vec.push(v);
+            true
+        })?;
+        Ok(vec)
+    }
 }

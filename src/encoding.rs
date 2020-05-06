@@ -53,6 +53,19 @@ pub fn decode_data_key_set_value(key: &[u8]) -> &[u8] {
     key[9..].as_ref()
 }
 
+pub fn encode_data_key_list_item(key_id: u64, position: i64) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(18);
+    buf.put_slice(*PREFIX_DATA);
+    buf.put_u64(key_id);
+    if position >= 0 {
+        buf.put_slice(b">");
+    } else {
+        buf.put_slice(b"<");
+    }
+    buf.put_i64(position);
+    buf
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum KeyType {
     Map,
@@ -129,14 +142,14 @@ impl KeyMeta {
         buf
     }
 
-    pub fn decode_list_extra(&self) -> Option<(i64, i64)> {
+    pub fn decode_list_extra(&self) -> (i64, i64) {
         if let Some(b) = &self.extra {
             let mut buf = b.as_slice();
             let left = buf.get_i64();
             let right = buf.get_i64();
-            Some((left, right))
+            (left, right)
         } else {
-            None
+            (0, 1)
         }
     }
     pub fn encode_list_extra(&mut self, left: i64, right: i64) {
