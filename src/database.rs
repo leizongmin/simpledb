@@ -153,7 +153,7 @@ impl Database {
     }
 
     pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>, Error> {
-        let mut meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
+        let meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
         let full_key = encode_data_key_map_field(meta.id, field);
         self.db.get(full_key)
     }
@@ -178,7 +178,7 @@ impl Database {
             if self.db.get(&full_key)?.is_some() {
                 meta.count -= 1;
                 self.db.delete(&full_key)?;
-                self.save_meta(key, &meta, true);
+                self.save_meta(key, &meta, true)?;
                 Ok(true)
             } else {
                 Ok(false)
@@ -201,7 +201,7 @@ impl Database {
         self.map_for_each(key, |f, v| {
             vec.push((String::from(f), v.to_vec()));
             true
-        });
+        })?;
         Ok(vec)
     }
 }
