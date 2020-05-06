@@ -370,6 +370,7 @@ impl Database {
 
     pub fn sorted_list_left_pop(&mut self, key: &str, max_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
         let meta = self.get_meta(key)?;
+        let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
             let prefix = encode_data_key(meta.id);
             let mut opts = ReadOptions::default();
@@ -378,21 +379,22 @@ impl Database {
             let iter = self.db.iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
-                    return Ok(None);
+                    break;
                 }
                 let score = decode_data_key_sorted_list_item(k.as_ref());
                 if let Some(max_score) = max_score {
                     if compare_score_bytes(score, max_score) > 0 {
-                        return Ok(None);
+                        break;
                     }
                 }
                 meta.count -= 1;
                 self.db.delete(k.as_ref())?;
                 self.save_meta(key, &meta, true)?;
-                return Ok(Some((Box::from(score), v)));
+                ret = Some((Box::from(score), v));
+                break;
             }
         }
-        Ok(None)
+        Ok(ret)
     }
 
     pub fn sorted_list_right_pop(&mut self, key: &str, min_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
