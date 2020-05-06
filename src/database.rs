@@ -151,13 +151,13 @@ impl Database {
 
     pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>, Error> {
         let meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
-        let full_key = encode_data_key_map_field(meta.id, field);
+        let full_key = encode_data_key_map_item(meta.id, field);
         self.db.get(full_key)
     }
 
     pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<(), Error> {
         let mut meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
-        let full_key = encode_data_key_map_field(meta.id, field);
+        let full_key = encode_data_key_map_item(meta.id, field);
         if self.db.get(&full_key)?.is_none() {
             meta.count += 1;
         }
@@ -171,7 +171,7 @@ impl Database {
             Ok(false)
         } else {
             let mut meta = meta.unwrap();
-            let full_key = encode_data_key_map_field(meta.id, field);
+            let full_key = encode_data_key_map_item(meta.id, field);
             if self.db.get(&full_key)?.is_some() {
                 meta.count -= 1;
                 self.db.delete(&full_key)?;
@@ -187,7 +187,7 @@ impl Database {
         where
             F: FnMut(&str, Box<[u8]>) -> bool {
         self.for_each_data(key, |k, v| {
-            let k = decode_data_key_map_field(k.as_ref());
+            let k = decode_data_key_map_item(k.as_ref());
             f(&k, v)
         })
     }
@@ -208,7 +208,7 @@ impl Database {
 
     pub fn set_add(&mut self, key: &str, value: &[u8]) -> Result<bool, Error> {
         let mut meta = self.get_or_create_meta(key, KeyType::Set)?.unwrap();
-        let full_key = encode_data_key_set_value(meta.id, value);
+        let full_key = encode_data_key_set_item(meta.id, value);
         let mut is_new_item = false;
         if self.db.get(&full_key)?.is_none() {
             meta.count += 1;
@@ -227,7 +227,7 @@ impl Database {
             Ok(false)
         } else {
             let meta = meta.unwrap();
-            let full_key = encode_data_key_set_value(meta.id, value);
+            let full_key = encode_data_key_set_item(meta.id, value);
             Ok(self.db.get(&full_key)?.is_some())
         }
     }
@@ -238,7 +238,7 @@ impl Database {
             Ok(false)
         } else {
             let mut meta = meta.unwrap();
-            let full_key = encode_data_key_set_value(meta.id, value);
+            let full_key = encode_data_key_set_item(meta.id, value);
             if self.db.get(&full_key)?.is_some() {
                 meta.count -= 1;
                 self.db.delete(full_key)?;
@@ -254,7 +254,7 @@ impl Database {
         where
             F: FnMut(Box<[u8]>) -> bool {
         self.for_each_data(key, |k, _| {
-            let value = decode_data_key_set_value(k.as_ref());
+            let value = decode_data_key_set_item(k.as_ref());
             f(Box::from(value))
         })
     }

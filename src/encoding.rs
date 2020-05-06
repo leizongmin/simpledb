@@ -28,7 +28,7 @@ pub fn encode_data_key(key_id: u64) -> BytesMut {
     buf
 }
 
-pub fn encode_data_key_map_field(key_id: u64, field: &str) -> BytesMut {
+pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
     let field = field.as_bytes();
     let mut buf = BytesMut::with_capacity(9 + field.len());
     buf.put_slice(*PREFIX_DATA);
@@ -37,11 +37,11 @@ pub fn encode_data_key_map_field(key_id: u64, field: &str) -> BytesMut {
     buf
 }
 
-pub fn decode_data_key_map_field(key: &[u8]) -> String {
+pub fn decode_data_key_map_item(key: &[u8]) -> String {
     String::from_utf8(key[9..].to_vec()).unwrap()
 }
 
-pub fn encode_data_key_set_value(key_id: u64, value: &[u8]) -> BytesMut {
+pub fn encode_data_key_set_item(key_id: u64, value: &[u8]) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9 + value.len());
     buf.put_slice(*PREFIX_DATA);
     buf.put_u64(key_id);
@@ -49,7 +49,7 @@ pub fn encode_data_key_set_value(key_id: u64, value: &[u8]) -> BytesMut {
     buf
 }
 
-pub fn decode_data_key_set_value(key: &[u8]) -> &[u8] {
+pub fn decode_data_key_set_item(key: &[u8]) -> &[u8] {
     key[9..].as_ref()
 }
 
