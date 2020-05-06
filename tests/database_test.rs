@@ -112,6 +112,8 @@ fn test_set() {
         assert_eq!(2, db.set_count(key).unwrap());
         assert_eq!(true, db.set_is_member(key, "aaa".as_bytes()).unwrap());
         assert_eq!(true, db.set_is_member(key, "bbb".as_bytes()).unwrap());
+        dump_database_meta(&db);
+        dump_database_data(&db, key);
 
         let vec = db.set_items(key).unwrap();
         assert_eq!(2, vec.len());
@@ -123,5 +125,7 @@ fn test_set() {
         assert_eq!(1, db.set_count(key).unwrap());
         assert_eq!(false, db.set_is_member(key, "aaa".as_bytes()).unwrap());
         assert_eq!(true, db.set_is_member(key, "bbb".as_bytes()).unwrap());
+        dump_database_meta(&db);
+        dump_database_data(&db, key);
     }
 }
