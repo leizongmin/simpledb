@@ -1,7 +1,7 @@
 use cedar::encoding::{get_score_bytes, get_score_from_bytes, KeyType};
 use common::*;
 
-mod common;
+pub mod common;
 
 #[test]
 fn test_get_or_save_meta() {
