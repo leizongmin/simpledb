@@ -185,18 +185,18 @@ impl Database {
 
     pub fn map_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
         where
-            F: FnMut(&str, &[u8]) -> bool {
+            F: FnMut(&str, Box<[u8]>) -> bool {
         self.for_each_data(key, |k, v| {
             let k = decode_data_key_map_field(k.as_ref());
-            f(&k, v.as_ref())
+            f(&k, v)
         })
     }
 
-    pub fn map_items(&mut self, key: &str) -> Result<Vec<(String, Vec<u8>)>, Error> {
+    pub fn map_items(&mut self, key: &str) -> Result<Vec<(String, Box<[u8]>)>, Error> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.map_for_each(key, |f, v| {
-            vec.push((String::from(f), v.to_vec()));
+            vec.push((String::from(f), v));
             true
         })?;
         Ok(vec)
