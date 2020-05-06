@@ -26,7 +26,7 @@ impl Database {
         DB::destroy(&Options::default(), path)
     }
 
-    pub fn after_open(&mut self) {
+    fn after_open(&mut self) {
         let mut last_key_id: u64 = 0;
         self.for_each_key(|_, m| {
             last_key_id = m.id;
@@ -39,9 +39,7 @@ impl Database {
         where
             F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
     {
-        let iter = self
-            .db
-            .iterator(IteratorMode::From(prefix, Direction::Forward));
+        let iter = self.db.iterator(IteratorMode::From(prefix, Direction::Forward));
         for (k, v) in iter {
             if !has_prefix(prefix, k.as_ref()) {
                 break;
@@ -350,6 +348,89 @@ impl Database {
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.list_for_each(key, |v| {
             vec.push(v);
+            true
+        })?;
+        Ok(vec)
+    }
+
+    pub fn sorted_list_count(&mut self, key: &str) -> Result<u64, Error> {
+        self.get_count(key)
+    }
+
+    pub fn sorted_list_add(&mut self, key: &str, score: &[u8], value: &[u8]) -> Result<u64, Error> {
+        let mut meta = self.get_or_create_meta(key, KeyType::SortedList)?.unwrap();
+        let sequence = meta.decode_sorted_list_extra();
+        let full_key = encode_data_key_sorted_list_item(meta.id, score, sequence);
+        meta.encode_sorted_list_extra(sequence + 1);
+        meta.count += 1;
+        self.db.put(full_key, value)?;
+        self.save_meta(key, &meta, false)?;
+        Ok(meta.count)
+    }
+
+    pub fn sorted_list_left_pop(&mut self, key: &str, max_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
+        let meta = self.get_meta(key)?;
+        if let Some(mut meta) = meta {
+            let prefix = encode_data_key(meta.id);
+            let iter = self.db.iterator(IteratorMode::From(&prefix, Direction::Forward));
+            for (k, v) in iter {
+                if !has_prefix(&prefix, k.as_ref()) {
+                    return Ok(None);
+                }
+                let score = decode_data_key_sorted_list_item(k.as_ref());
+                if let Some(max_score) = max_score {
+                    if compare_score_bytes(score, max_score) > 0 {
+                        return Ok(None);
+                    }
+                }
+                meta.count -= 1;
+                self.db.delete(k.as_ref())?;
+                self.save_meta(key, &meta, true)?;
+                return Ok(Some((Box::from(score), v)));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn sorted_list_right_pop(&mut self, key: &str, min_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
+        let meta = self.get_meta(key)?;
+        if let Some(mut meta) = meta {
+            let prefix = encode_data_key(meta.id);
+            let next_prefix = encode_data_key(meta.id + 1);
+            let iter = self.db.iterator(IteratorMode::From(&next_prefix, Direction::Reverse));
+            for (k, v) in iter {
+                if !has_prefix(&prefix, k.as_ref()) {
+                    return Ok(None);
+                }
+                let score = decode_data_key_sorted_list_item(k.as_ref());
+                if let Some(min_score) = min_score {
+                    if compare_score_bytes(score, min_score) < 0 {
+                        return Ok(None);
+                    }
+                }
+                meta.count -= 1;
+                self.db.delete(k.as_ref())?;
+                self.save_meta(key, &meta, true)?;
+                return Ok(Some((Box::from(score), v)));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn sorted_list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
+        where
+            F: FnMut((Box<[u8]>, Box<[u8]>)) -> bool {
+        self.for_each_data(key, |k, v| {
+            let score = decode_data_key_sorted_list_item(k.as_ref());
+            f((Box::from(score), Box::from(v)))
+        })
+    }
+
+    pub fn sorted_list_items(&mut self, key: &str) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>, Error> {
+        let count = self.get_count(key)?;
+        let mut vec = Vec::with_capacity(count as u64 as usize);
+        self.sorted_list_for_each(key, |item| {
+            vec.push(item);
             true
         })?;
         Ok(vec)

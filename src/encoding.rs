@@ -66,6 +66,104 @@ pub fn encode_data_key_list_item(key_id: u64, position: i64) -> BytesMut {
     buf
 }
 
+pub fn encode_data_key_sorted_list_item(key_id: u64, score: &[u8], sequence: u64) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(17 + score.len());
+    buf.put_slice(*PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf.put_slice(score);
+    buf.put_u64(sequence);
+    buf
+}
+
+pub fn decode_data_key_sorted_list_item(key: &[u8]) -> &[u8] {
+    key[9..key.len() - 8].as_ref()
+}
+
+pub fn compare_score_bytes(a: &[u8], b: &[u8]) -> i32 {
+    if a > b { 1 } else if a < b { -1 } else { 0 }
+}
+
+pub trait BytesComparableScore {
+    fn to_bytes(&self) -> Vec<u8>;
+    fn from_bytes(b: &[u8]) -> Self where Self: Sized;
+}
+
+impl BytesComparableScore for i64 {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = BytesMut::with_capacity(9);
+        if *self >= 0 {
+            buf.put_slice(b">");
+        } else {
+            buf.put_slice(b"<");
+        }
+        buf.put_i64(*self);
+        buf.to_vec()
+    }
+
+    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+        b[1..].as_ref().to_bytes().get_i64()
+    }
+}
+
+impl BytesComparableScore for i32 {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = BytesMut::with_capacity(5);
+        if *self >= 0 {
+            buf.put_slice(b">");
+        } else {
+            buf.put_slice(b"<");
+        }
+        buf.put_i32(*self);
+        buf.to_vec()
+    }
+
+    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+        b[1..].as_ref().to_bytes().get_i32()
+    }
+}
+
+impl BytesComparableScore for f64 {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = BytesMut::with_capacity(9);
+        if *self >= 0.0 {
+            buf.put_slice(b">");
+        } else {
+            buf.put_slice(b"<");
+        }
+        buf.put_f64(*self);
+        buf.to_vec()
+    }
+
+    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+        b[1..].as_ref().to_bytes().get_f64()
+    }
+}
+
+impl BytesComparableScore for f32 {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = BytesMut::with_capacity(5);
+        if *self >= 0.0 {
+            buf.put_slice(b">");
+        } else {
+            buf.put_slice(b"<");
+        }
+        buf.put_f32(*self);
+        buf.to_vec()
+    }
+
+    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+        b[1..].as_ref().to_bytes().get_f32()
+    }
+}
+
+pub fn get_score_bytes<T>(score: T) -> Vec<u8> where T: BytesComparableScore {
+    score.to_bytes()
+}
+
+pub fn get_score_from_bytes<T>(b: &[u8]) -> T where T: BytesComparableScore {
+    BytesComparableScore::from_bytes(b)
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum KeyType {
     Map,
@@ -157,5 +255,20 @@ impl KeyMeta {
         buf.put_i64(left);
         buf.put_i64(right);
         self.extra = Some(buf.to_vec());
+    }
+
+    pub fn decode_sorted_list_extra(&self) -> u64 {
+        if let Some(b) = &self.extra {
+            let mut buf = b.as_slice();
+            buf.get_u64()
+        } else {
+            0
+        }
+    }
+
+    pub fn encode_sorted_list_extra(&mut self, sequence: u64) {
+        let mut buf = BytesMut::with_capacity(8);
+        buf.put_u64(sequence);
+        self.extra = Some(buf.to_vec())
     }
 }

@@ -1,4 +1,4 @@
-use cedar::encoding::KeyType;
+use cedar::encoding::{get_score_bytes, get_score_from_bytes, KeyType};
 use common::*;
 
 mod common;
@@ -182,6 +182,71 @@ fn test_list() {
         assert_eq!(None, db.list_left_pop(key).unwrap());
         assert_eq!(None, db.list_right_pop(key).unwrap());
         assert_eq!(0, db.list_count(key).unwrap());
+        dump_database_meta(&db);
+        dump_database_data(&db, key);
+    }
+}
+
+#[test]
+fn test_sorted_list() {
+    let path = get_random_database_path();
+    {
+        let mut db = open_database_with_path(&path);
+        let key = "hello";
+
+        assert_eq!(0, db.sorted_list_count(key).unwrap());
+
+        assert_eq!(1, db.sorted_list_add(key, get_score_bytes(123).as_slice(), "a".as_bytes()).unwrap());
+        assert_eq!(2, db.sorted_list_add(key, get_score_bytes(120).as_slice(), "b".as_bytes()).unwrap());
+        assert_eq!(3, db.sorted_list_add(key, get_score_bytes(0).as_slice(), "c".as_bytes()).unwrap());
+        assert_eq!(4, db.sorted_list_add(key, get_score_bytes(120).as_slice(), "d".as_bytes()).unwrap());
+        assert_eq!(5, db.sorted_list_add(key, get_score_bytes(-5).as_slice(), "e".as_bytes()).unwrap());
+        assert_eq!(6, db.sorted_list_add(key, get_score_bytes(-10).as_slice(), "f".as_bytes()).unwrap());
+        assert_eq!(6, db.sorted_list_count(key).unwrap());
+        dump_database_meta(&db);
+        dump_database_data(&db, key);
+
+        let vec = db.sorted_list_items(key).unwrap();
+        assert_eq!(6, vec.len());
+        let scores: Vec<i32> = vec.iter().map(|(s, _)| get_score_from_bytes(s)).collect();
+        assert_eq!(vec![-10, -5, 0, 120, 120, 123], scores);
+        let values: Vec<String> = vec.iter().map(|(_, v)| String::from_utf8(v.to_vec()).unwrap()).collect();
+        assert_eq!(vec!["f", "e", "c", "b", "d", "a"], values);
+
+        assert_eq!(None, db.sorted_list_left_pop(key, Some(get_score_bytes(-200).as_slice())).unwrap());
+        assert_eq!(None, db.sorted_list_right_pop(key, Some(get_score_bytes(200).as_slice())).unwrap());
+
+        {
+            let (score, value) = db.sorted_list_left_pop(key, Some(get_score_bytes(-8).as_slice())).unwrap().unwrap();
+            assert_eq!(-10, get_score_from_bytes(score.as_ref()));
+            assert_eq!("f", String::from_utf8(value.to_vec()).unwrap());
+            assert_eq!(None, db.sorted_list_left_pop(key, Some(get_score_bytes(-8).as_slice())).unwrap());
+        }
+        {
+            let (score, value) = db.sorted_list_right_pop(key, Some(get_score_bytes(121).as_slice())).unwrap().unwrap();
+            assert_eq!(123, get_score_from_bytes(score.as_ref()));
+            assert_eq!("a", String::from_utf8(value.to_vec()).unwrap());
+            assert_eq!(None, db.sorted_list_right_pop(key, Some(get_score_bytes(121).as_slice())).unwrap());
+        }
+        {
+            let (score, value) = db.sorted_list_left_pop(key, None).unwrap().unwrap();
+            assert_eq!(-5, get_score_from_bytes(score.as_ref()));
+            assert_eq!("e", String::from_utf8(value.to_vec()).unwrap());
+        }
+        {
+            let (score, value) = db.sorted_list_right_pop(key, None).unwrap().unwrap();
+            assert_eq!(120, get_score_from_bytes(score.as_ref()));
+            assert_eq!("d", String::from_utf8(value.to_vec()).unwrap());
+        }
+        assert_eq!(2, db.sorted_list_count(key).unwrap());
+
+        let vec = db.sorted_list_items(key).unwrap();
+        assert_eq!(2, vec.len());
+        let scores: Vec<i32> = vec.iter().map(|(s, _)| get_score_from_bytes(s)).collect();
+        assert_eq!(vec![0, 120], scores);
+        let values: Vec<String> = vec.iter().map(|(_, v)| String::from_utf8(v.to_vec()).unwrap()).collect();
+        assert_eq!(vec!["c", "b"], values);
+
         dump_database_meta(&db);
         dump_database_data(&db, key);
     }
