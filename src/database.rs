@@ -1,4 +1,4 @@
-use rocksdb::{DB, Direction, Error, IteratorMode, Options, ReadOptions};
+use rocksdb::{DB, Direction, Error, IteratorMode, Options, ReadOptions, DBCompactionStyle};
 
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
@@ -12,7 +12,9 @@ pub struct Database {
 
 impl Database {
     pub fn open(path: &str) -> Result<Database, Error> {
-        let db = DB::open_default(path)?;
+        let mut opts = Options::default();
+        opts.create_if_missing(true);
+        let db = DB::open(&opts, path)?;
         let mut db = Database {
             path: String::from(path),
             db,
