@@ -360,9 +360,9 @@ impl Database {
 
     pub fn sorted_list_add(&mut self, key: &str, score: &[u8], value: &[u8]) -> Result<u64, Error> {
         let mut meta = self.get_or_create_meta(key, KeyType::SortedList)?;
-        let (sequence, deleted_count) = meta.decode_sorted_list_extra();
+        let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
         let full_key = encode_data_key_sorted_list_item(meta.id, score, sequence);
-        meta.encode_sorted_list_extra(sequence + 1, deleted_count);
+        meta.encode_sorted_list_extra(sequence + 1, left_deleted_count, right_deleted_count);
         meta.count += 1;
         self.db.put(full_key, value)?;
         self.save_meta(key, &meta, false)?;
@@ -373,7 +373,7 @@ impl Database {
         let meta = self.get_meta(key)?;
         let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
-            let (sequence, deleted_count) = meta.decode_sorted_list_extra();
+            let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let mut opts = ReadOptions::default();
             opts.set_prefix_same_as_start(true);
@@ -391,11 +391,11 @@ impl Database {
                 }
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
-                if deleted_count > 0 && deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
-                    self.db.compact_range(Some(encode_data_key(meta.id).as_ref()), Some(encode_data_key(meta.id + 1).as_ref()));
-                    meta.encode_sorted_list_extra(sequence, 0);
+                if left_deleted_count > 0 && left_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
+                    self.db.compact_range(Some(encode_data_key(meta.id).as_ref()), Some(k.as_ref()));
+                    meta.encode_sorted_list_extra(sequence, 0, right_deleted_count);
                 } else {
-                    meta.encode_sorted_list_extra(sequence, deleted_count + 1);
+                    meta.encode_sorted_list_extra(sequence, left_deleted_count + 1, right_deleted_count);
                 }
                 self.save_meta(key, &meta, true)?;
                 ret = Some((Box::from(score), v));
@@ -409,7 +409,7 @@ impl Database {
         let meta = self.get_meta(key)?;
         let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
-            let (sequence, deleted_count) = meta.decode_sorted_list_extra();
+            let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let next_prefix = encode_data_key(meta.id + 1);
             let mut opts = ReadOptions::default();
@@ -426,11 +426,11 @@ impl Database {
                 }
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
-                if deleted_count > 0 && deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
-                    self.db.compact_range(Some(encode_data_key(meta.id).as_ref()), Some(encode_data_key(meta.id + 1).as_ref()));
-                    meta.encode_sorted_list_extra(sequence, 0);
+                if right_deleted_count > 0 && right_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
+                    self.db.compact_range(Some(k.as_ref()), Some(next_prefix.as_ref()));
+                    meta.encode_sorted_list_extra(sequence, left_deleted_count, 0);
                 } else {
-                    meta.encode_sorted_list_extra(sequence, deleted_count + 1);
+                    meta.encode_sorted_list_extra(sequence, left_deleted_count, right_deleted_count + 1);
                 }
                 self.save_meta(key, &meta, true)?;
                 ret = Some((Box::from(score), v));

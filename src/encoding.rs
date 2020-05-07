@@ -257,19 +257,20 @@ impl KeyMeta {
         self.extra = Some(buf.to_vec());
     }
 
-    pub fn decode_sorted_list_extra(&self) -> (u64, u32) {
+    pub fn decode_sorted_list_extra(&self) -> (u64, u32, u32) {
         if let Some(b) = &self.extra {
             let mut buf = b.as_slice();
-            (buf.get_u64(), buf.get_u32())
+            (buf.get_u64(), buf.get_u32(), buf.get_u32())
         } else {
-            (0, 0)
+            (0, 0, 0)
         }
     }
 
-    pub fn encode_sorted_list_extra(&mut self, sequence: u64, deleted_count: u32) {
+    pub fn encode_sorted_list_extra(&mut self, sequence: u64, left_deleted_count: u32, right_deleted_count: u32) {
         let mut buf = BytesMut::with_capacity(12);
         buf.put_u64(sequence);
-        buf.put_u32(deleted_count);
+        buf.put_u32(left_deleted_count);
+        buf.put_u32(right_deleted_count);
         self.extra = Some(buf.to_vec())
     }
 }
