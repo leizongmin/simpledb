@@ -164,6 +164,32 @@ pub fn get_score_from_bytes<T>(b: &[u8]) -> T where T: BytesComparableScore {
     BytesComparableScore::from_bytes(b)
 }
 
+pub fn get_next_upper_bound(bound: &[u8]) -> Vec<u8> {
+    let mut next: Vec<i16> = Vec::from(bound).iter().map(|v| *v as i16).collect();
+    if next.iter().find(|v| **v != 255).is_none() {
+        next.push(0);
+    } else {
+        let end = bound.len() - 1;
+        next[end] += 1;
+        if next[end] > 255 {
+            next[end] = 0;
+            next[end - 1] += 1;
+        }
+        for i in 1..end {
+            let j = end - i;
+            if next[j] > 255 {
+                next[j] = 0;
+                next[j - 1] += 1;
+            }
+        }
+        if next[0] > 255 {
+            next[0] = 255;
+            next.push(1);
+        }
+    }
+    next.iter().map(|v| *v as u8).collect()
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum KeyType {
     Map,
