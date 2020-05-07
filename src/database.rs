@@ -407,27 +407,37 @@ impl Database {
 
     pub fn sorted_list_right_pop(&mut self, key: &str, min_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
         let meta = self.get_meta(key)?;
+        let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
+            let (sequence, deleted_count) = meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let next_prefix = encode_data_key(meta.id + 1);
-            let iter = self.db.iterator(IteratorMode::From(&next_prefix, Direction::Reverse));
+            let mut opts = ReadOptions::default();
+            let iter = self.db.iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
-                    return Ok(None);
+                    break;
                 }
                 let score = decode_data_key_sorted_list_item(k.as_ref());
                 if let Some(min_score) = min_score {
                     if compare_score_bytes(score, min_score) < 0 {
-                        return Ok(None);
+                        break;
                     }
                 }
-                meta.count -= 1;
                 self.db.delete(k.as_ref())?;
+                meta.count -= 1;
+                if deleted_count > 0 && deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
+                    self.db.compact_range(Some(encode_data_key(meta.id).as_ref()), Some(encode_data_key(meta.id + 1).as_ref()));
+                    meta.encode_sorted_list_extra(sequence, 0);
+                } else {
+                    meta.encode_sorted_list_extra(sequence, deleted_count + 1);
+                }
                 self.save_meta(key, &meta, true)?;
-                return Ok(Some((Box::from(score), v)));
+                ret = Some((Box::from(score), v));
+                break;
             }
         }
-        Ok(None)
+        Ok(ret)
     }
 
     pub fn sorted_list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
