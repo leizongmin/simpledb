@@ -10,4 +10,6 @@ edition = "2018"
 rocksdb = "0.14.0"
 lazy_static = "1.4.0"
 bytes = "0.5.4"
+
+[dev-dependencies]
 rand = "0.7.3"
