@@ -3,7 +3,7 @@ use cedar::encoding::get_score_bytes;
 pub mod common;
 
 fn main() {
-    // test_map();
+    test_map();
     test_sorted_list();
 }
 
@@ -53,7 +53,7 @@ fn test_sorted_list() {
         }
     });
     common::benchmark_test_case("sorted_list_left_pop", count, |_| {
-        for (score, value) in &items {
+        for (score, _) in &items {
             db.sorted_list_left_pop(key, Some(score.as_slice())).unwrap();
         }
     });
@@ -63,8 +63,8 @@ fn test_sorted_list() {
         }
     });
     common::benchmark_test_case("sorted_list_right_pop", count, |_| {
-        for (score, value) in &items {
-            db.sorted_list_right_pop(key, None).unwrap();
+        for (score, _) in &items {
+            db.sorted_list_right_pop(key, Some(score.as_slice())).unwrap();
         }
     });
 }

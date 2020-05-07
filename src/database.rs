@@ -1,4 +1,4 @@
-use rocksdb::{DB, Direction, Error, IteratorMode, Options, ReadOptions, DBCompactionStyle};
+use rocksdb::{DB, Direction, Error, IteratorMode, Options, ReadOptions};
 
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
@@ -412,7 +412,7 @@ impl Database {
             let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let next_prefix = encode_data_key(meta.id + 1);
-            let mut opts = ReadOptions::default();
+            let opts = ReadOptions::default();
             let iter = self.db.iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
