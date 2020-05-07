@@ -64,20 +64,17 @@ impl Database {
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))
     }
 
-    pub fn get_or_create_meta(
-        &mut self,
-        key: &str,
-        key_type: KeyType,
-    ) -> Result<Option<KeyMeta>, Error> {
+    pub fn get_or_create_meta(&mut self, key: &str, key_type: KeyType) -> Result<KeyMeta, Error> {
         let m = self.get_meta(key)?;
-        if let None = m {
-            let m = KeyMeta::new(self.next_key_id, key_type);
-            self.next_key_id += 1;
-            self.save_meta(key, &m, false)?;
-            Ok(Some(m))
-        } else {
-            Ok(m)
-        }
+        return match m {
+            Some(m) => Ok(m),
+            None => {
+                let m = KeyMeta::new(self.next_key_id, key_type);
+                self.next_key_id += 1;
+                self.save_meta(key, &m, false)?;
+                Ok(m)
+            }
+        };
     }
 
     pub fn for_each_key<F>(&self, mut f: F) -> usize
@@ -148,13 +145,13 @@ impl Database {
     }
 
     pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>, Error> {
-        let meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
+        let meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         self.db.get(full_key)
     }
 
     pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<(), Error> {
-        let mut meta = self.get_or_create_meta(key, KeyType::Map)?.unwrap();
+        let mut meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         if self.db.get(&full_key)?.is_none() {
             meta.count += 1;
@@ -205,7 +202,7 @@ impl Database {
     }
 
     pub fn set_add(&mut self, key: &str, value: &[u8]) -> Result<bool, Error> {
-        let mut meta = self.get_or_create_meta(key, KeyType::Set)?.unwrap();
+        let mut meta = self.get_or_create_meta(key, KeyType::Set)?;
         let full_key = encode_data_key_set_item(meta.id, value);
         let mut is_new_item = false;
         if self.db.get(&full_key)?.is_none() {
@@ -272,7 +269,7 @@ impl Database {
     }
 
     pub fn list_left_push(&mut self, key: &str, value: &[u8]) -> Result<u64, Error> {
-        let mut meta = self.get_or_create_meta(key, KeyType::List)?.unwrap();
+        let mut meta = self.get_or_create_meta(key, KeyType::List)?;
         let (left, right) = meta.decode_list_extra();
         let full_key = encode_data_key_list_item(meta.id, left);
         self.db.put(full_key, value)?;
@@ -283,7 +280,7 @@ impl Database {
     }
 
     pub fn list_right_push(&mut self, key: &str, value: &[u8]) -> Result<u64, Error> {
-        let mut meta = self.get_or_create_meta(key, KeyType::List)?.unwrap();
+        let mut meta = self.get_or_create_meta(key, KeyType::List)?;
         let (left, right) = meta.decode_list_extra();
         let full_key = encode_data_key_list_item(meta.id, right);
         self.db.put(full_key, value)?;
@@ -358,7 +355,7 @@ impl Database {
     }
 
     pub fn sorted_list_add(&mut self, key: &str, score: &[u8], value: &[u8]) -> Result<u64, Error> {
-        let mut meta = self.get_or_create_meta(key, KeyType::SortedList)?.unwrap();
+        let mut meta = self.get_or_create_meta(key, KeyType::SortedList)?;
         let sequence = meta.decode_sorted_list_extra();
         let full_key = encode_data_key_sorted_list_item(meta.id, score, sequence);
         meta.encode_sorted_list_extra(sequence + 1);
