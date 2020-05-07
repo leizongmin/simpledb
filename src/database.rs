@@ -377,7 +377,6 @@ impl Database {
             let prefix = encode_data_key(meta.id);
             let mut opts = ReadOptions::default();
             opts.set_prefix_same_as_start(true);
-            opts.set_total_order_seek(true);
             let iter = self.db.iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
