@@ -10,6 +10,8 @@ pub struct Database {
     next_key_id: u64,
 }
 
+const SORTED_LIST_COMPACT_EVERY_DELETES_COUNT: u32 = 300;
+
 impl Database {
     pub fn open(path: &str) -> Result<Database, Error> {
         let mut opts = Options::default();
@@ -389,7 +391,7 @@ impl Database {
                 }
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
-                if deleted_count > 0 && deleted_count % 200 == 0 {
+                if deleted_count > 0 && deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
                     self.db.compact_range(Some(encode_data_key(meta.id).as_ref()), Some(encode_data_key(meta.id + 1).as_ref()));
                     meta.encode_sorted_list_extra(sequence, 0);
                 } else {
