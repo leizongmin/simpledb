@@ -1,4 +1,4 @@
-use rocksdb::{DB, Direction, Error, IteratorMode, Options, ReadOptions};
+use rocksdb::{Direction, Error, IteratorMode, Options, ReadOptions, DB};
 
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
@@ -40,10 +40,12 @@ impl Database {
     }
 
     fn prefix_iterator<F>(&self, prefix: &[u8], mut f: F)
-        where
-            F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
+    where
+        F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
     {
-        let iter = self.db.iterator(IteratorMode::From(prefix, Direction::Forward));
+        let iter = self
+            .db
+            .iterator(IteratorMode::From(prefix, Direction::Forward));
         for (k, v) in iter {
             if !has_prefix(prefix, k.as_ref()) {
                 break;
@@ -82,8 +84,8 @@ impl Database {
     }
 
     pub fn for_each_key<F>(&self, mut f: F) -> usize
-        where
-            F: FnMut(&str, &KeyMeta) -> bool,
+    where
+        F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
@@ -97,8 +99,8 @@ impl Database {
     }
 
     pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) -> usize
-        where
-            F: FnMut(&str, &KeyMeta) -> bool,
+    where
+        F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
         self.prefix_iterator(*PREFIX_META, |k, v| {
@@ -116,8 +118,9 @@ impl Database {
     }
 
     pub fn for_each_data<F>(&self, key: &str, mut f: F) -> Result<u64, Error>
-        where
-            F: FnMut(Box<[u8]>, Box<[u8]>) -> bool {
+    where
+        F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
+    {
         let meta = self.get_meta(key)?;
         match meta {
             Some(meta) => {
@@ -132,7 +135,7 @@ impl Database {
                     Ok(0)
                 }
             }
-            None => Ok(0)
+            None => Ok(0),
         }
     }
 
@@ -183,8 +186,9 @@ impl Database {
     }
 
     pub fn map_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
-        where
-            F: FnMut(&str, Box<[u8]>) -> bool {
+    where
+        F: FnMut(&str, Box<[u8]>) -> bool,
+    {
         self.for_each_data(key, |k, v| {
             let k = decode_data_key_map_item(k.as_ref());
             f(&k, v)
@@ -250,8 +254,9 @@ impl Database {
     }
 
     pub fn set_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
-        where
-            F: FnMut(Box<[u8]>) -> bool {
+    where
+        F: FnMut(Box<[u8]>) -> bool,
+    {
         self.for_each_data(key, |k, _| {
             let value = decode_data_key_set_item(k.as_ref());
             f(Box::from(value))
@@ -337,11 +342,10 @@ impl Database {
     }
 
     pub fn list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
-        where
-            F: FnMut(Box<[u8]>) -> bool {
-        self.for_each_data(key, |_, v| {
-            f(Box::from(v))
-        })
+    where
+        F: FnMut(Box<[u8]>) -> bool,
+    {
+        self.for_each_data(key, |_, v| f(Box::from(v)))
     }
 
     pub fn list_items(&mut self, key: &str) -> Result<Vec<Box<[u8]>>, Error> {
@@ -369,15 +373,22 @@ impl Database {
         Ok(meta.count)
     }
 
-    pub fn sorted_list_left_pop(&mut self, key: &str, max_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
+    pub fn sorted_list_left_pop(
+        &mut self,
+        key: &str,
+        max_score: Option<&[u8]>,
+    ) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
         let meta = self.get_meta(key)?;
         let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
-            let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
+            let (sequence, left_deleted_count, right_deleted_count) =
+                meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let mut opts = ReadOptions::default();
             opts.set_prefix_same_as_start(true);
-            let iter = self.db.iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
+            let iter = self
+                .db
+                .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
                     break;
@@ -390,11 +401,18 @@ impl Database {
                 }
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
-                if left_deleted_count > 0 && left_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
-                    self.db.compact_range(Some(encode_data_key(meta.id).as_ref()), Some(k.as_ref()));
+                if left_deleted_count > 0
+                    && left_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0
+                {
+                    self.db
+                        .compact_range(Some(encode_data_key(meta.id).as_ref()), Some(k.as_ref()));
                     meta.encode_sorted_list_extra(sequence, 0, right_deleted_count);
                 } else {
-                    meta.encode_sorted_list_extra(sequence, left_deleted_count + 1, right_deleted_count);
+                    meta.encode_sorted_list_extra(
+                        sequence,
+                        left_deleted_count + 1,
+                        right_deleted_count,
+                    );
                 }
                 self.save_meta(key, &meta, true)?;
                 ret = Some((Box::from(score), v));
@@ -404,15 +422,22 @@ impl Database {
         Ok(ret)
     }
 
-    pub fn sorted_list_right_pop(&mut self, key: &str, min_score: Option<&[u8]>) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
+    pub fn sorted_list_right_pop(
+        &mut self,
+        key: &str,
+        min_score: Option<&[u8]>,
+    ) -> Result<Option<(Box<[u8]>, Box<[u8]>)>, Error> {
         let meta = self.get_meta(key)?;
         let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
-            let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
+            let (sequence, left_deleted_count, right_deleted_count) =
+                meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let next_prefix = encode_data_key(meta.id + 1);
             let opts = ReadOptions::default();
-            let iter = self.db.iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
+            let iter = self
+                .db
+                .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
                     break;
@@ -425,11 +450,18 @@ impl Database {
                 }
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
-                if right_deleted_count > 0 && right_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0 {
-                    self.db.compact_range(Some(k.as_ref()), Some(next_prefix.as_ref()));
+                if right_deleted_count > 0
+                    && right_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0
+                {
+                    self.db
+                        .compact_range(Some(k.as_ref()), Some(next_prefix.as_ref()));
                     meta.encode_sorted_list_extra(sequence, left_deleted_count, 0);
                 } else {
-                    meta.encode_sorted_list_extra(sequence, left_deleted_count, right_deleted_count + 1);
+                    meta.encode_sorted_list_extra(
+                        sequence,
+                        left_deleted_count,
+                        right_deleted_count + 1,
+                    );
                 }
                 self.save_meta(key, &meta, true)?;
                 ret = Some((Box::from(score), v));
@@ -440,8 +472,9 @@ impl Database {
     }
 
     pub fn sorted_list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64, Error>
-        where
-            F: FnMut((Box<[u8]>, Box<[u8]>)) -> bool {
+    where
+        F: FnMut((Box<[u8]>, Box<[u8]>)) -> bool,
+    {
         self.for_each_data(key, |k, v| {
             let score = decode_data_key_sorted_list_item(k.as_ref());
             f((Box::from(score), Box::from(v)))

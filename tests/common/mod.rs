@@ -48,7 +48,8 @@ pub fn dump_database_data(db: &Database, key: &str) {
     db.for_each_data(key, |k, m| {
         println!("key: {:?}\t value: {:?}", k, m);
         true
-    }).unwrap();
+    })
+    .unwrap();
 }
 
 #[allow(dead_code)]

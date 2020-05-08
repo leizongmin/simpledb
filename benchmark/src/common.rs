@@ -7,8 +7,8 @@ use cedar::database::Database;
 
 #[allow(dead_code)]
 pub fn benchmark_test_case<F>(title: &str, count: usize, mut f: F)
-    where
-        F: FnMut(usize),
+where
+    F: FnMut(usize),
 {
     println!("start {}...", title);
     let start = SystemTime::now()
@@ -22,7 +22,10 @@ pub fn benchmark_test_case<F>(title: &str, count: usize, mut f: F)
         .as_millis();
     let spent = end - start;
     let qps = count as f64 / (spent as f64 / 1000 as f64);
-    println!("{}, spent={}ms, count={}, qps={}", title, spent, count, qps as i64);
+    println!(
+        "{}, spent={}ms, count={}, qps={}",
+        title, spent, count, qps as i64
+    );
 }
 
 #[allow(dead_code)]

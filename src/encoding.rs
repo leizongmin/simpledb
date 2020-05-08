@@ -80,12 +80,20 @@ pub fn decode_data_key_sorted_list_item(key: &[u8]) -> &[u8] {
 }
 
 pub fn compare_score_bytes(a: &[u8], b: &[u8]) -> i32 {
-    if a > b { 1 } else if a < b { -1 } else { 0 }
+    if a > b {
+        1
+    } else if a < b {
+        -1
+    } else {
+        0
+    }
 }
 
 pub trait BytesComparableScore {
     fn to_bytes(&self) -> Vec<u8>;
-    fn from_bytes(b: &[u8]) -> Self where Self: Sized;
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized;
 }
 
 impl BytesComparableScore for i64 {
@@ -100,7 +108,10 @@ impl BytesComparableScore for i64 {
         buf.to_vec()
     }
 
-    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         b[1..].as_ref().to_bytes().get_i64()
     }
 }
@@ -117,7 +128,10 @@ impl BytesComparableScore for i32 {
         buf.to_vec()
     }
 
-    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         b[1..].as_ref().to_bytes().get_i32()
     }
 }
@@ -134,7 +148,10 @@ impl BytesComparableScore for f64 {
         buf.to_vec()
     }
 
-    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         b[1..].as_ref().to_bytes().get_f64()
     }
 }
@@ -151,16 +168,25 @@ impl BytesComparableScore for f32 {
         buf.to_vec()
     }
 
-    fn from_bytes(b: &[u8]) -> Self where Self: Sized {
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         b[1..].as_ref().to_bytes().get_f32()
     }
 }
 
-pub fn get_score_bytes<T>(score: T) -> Vec<u8> where T: BytesComparableScore {
+pub fn get_score_bytes<T>(score: T) -> Vec<u8>
+where
+    T: BytesComparableScore,
+{
     score.to_bytes()
 }
 
-pub fn get_score_from_bytes<T>(b: &[u8]) -> T where T: BytesComparableScore {
+pub fn get_score_from_bytes<T>(b: &[u8]) -> T
+where
+    T: BytesComparableScore,
+{
     BytesComparableScore::from_bytes(b)
 }
 
@@ -292,7 +318,12 @@ impl KeyMeta {
         }
     }
 
-    pub fn encode_sorted_list_extra(&mut self, sequence: u64, left_deleted_count: u32, right_deleted_count: u32) {
+    pub fn encode_sorted_list_extra(
+        &mut self,
+        sequence: u64,
+        left_deleted_count: u32,
+        right_deleted_count: u32,
+    ) {
         let mut buf = BytesMut::with_capacity(12);
         buf.put_u64(sequence);
         buf.put_u32(left_deleted_count);

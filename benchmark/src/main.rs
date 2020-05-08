@@ -40,11 +40,14 @@ fn test_sorted_list() {
     let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
     let key = "hello_sorted_list";
     let count = 1_0000;
-    let items: Vec<(Vec<u8>, String)> = (0..count).map(|i| (get_score_bytes(i as i64), format!("field_{}", i))).collect();
+    let items: Vec<(Vec<u8>, String)> = (0..count)
+        .map(|i| (get_score_bytes(i as i64), format!("field_{}", i)))
+        .collect();
 
     common::benchmark_test_case("sorted_list_add", count, |_| {
         for (score, value) in &items {
-            db.sorted_list_add(key, score.as_slice(), value.as_bytes()).unwrap();
+            db.sorted_list_add(key, score.as_slice(), value.as_bytes())
+                .unwrap();
         }
     });
     common::benchmark_test_case("sorted_list_count", count, |count| {
@@ -54,17 +57,20 @@ fn test_sorted_list() {
     });
     common::benchmark_test_case("sorted_list_left_pop", count, |_| {
         for (score, _) in &items {
-            db.sorted_list_left_pop(key, Some(score.as_slice())).unwrap();
+            db.sorted_list_left_pop(key, Some(score.as_slice()))
+                .unwrap();
         }
     });
     common::benchmark_test_case("sorted_list_add", count, |_| {
         for (score, value) in &items {
-            db.sorted_list_add(key, score.as_slice(), value.as_bytes()).unwrap();
+            db.sorted_list_add(key, score.as_slice(), value.as_bytes())
+                .unwrap();
         }
     });
     common::benchmark_test_case("sorted_list_right_pop", count, |_| {
         for (score, _) in &items {
-            db.sorted_list_right_pop(key, Some(score.as_slice())).unwrap();
+            db.sorted_list_right_pop(key, Some(score.as_slice()))
+                .unwrap();
         }
     });
 }
