@@ -10,7 +10,7 @@ pub fn benchmark_test_case<F>(title: &str, count: usize, mut f: F)
 where
     F: FnMut(usize),
 {
-    println!("start {}...", title);
+    // println!("start {}...", title);
     let start = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
@@ -23,8 +23,8 @@ where
     let spent = end - start;
     let qps = count as f64 / (spent as f64 / 1000 as f64);
     println!(
-        "{}, spent={}ms, count={}, qps={}",
-        title, spent, count, qps as i64
+        "{:30}\tcount={}\tspent={}ms\tqps={}",
+        title, count, spent, qps as i64
     );
 }
 

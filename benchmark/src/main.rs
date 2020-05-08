@@ -4,6 +4,8 @@ pub mod common;
 
 fn main() {
     test_map();
+    test_set();
+    test_list();
     test_sorted_list();
 }
 
@@ -32,6 +34,72 @@ fn test_map() {
     common::benchmark_test_case("map_delete", count, |_| {
         for f in &fields {
             db.map_delete(key, f).unwrap();
+        }
+    });
+}
+
+fn test_set() {
+    let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let key = "hello_set";
+    let count = 10_0000;
+    let values: Vec<String> = (0..count).map(|i| format!("field_{}", i)).collect();
+
+    common::benchmark_test_case("set_add", count, |_| {
+        for v in &values {
+            db.set_add(key, v.as_bytes()).unwrap();
+        }
+    });
+    common::benchmark_test_case("set_count", count, |_| {
+        for _ in &values {
+            db.set_count(key).unwrap();
+        }
+    });
+    common::benchmark_test_case("set_is_member", count, |_| {
+        for v in &values {
+            db.set_is_member(key, v.as_bytes()).unwrap();
+        }
+    });
+    common::benchmark_test_case("set_delete", count, |_| {
+        for v in &values {
+            db.set_delete(key, v.as_bytes()).unwrap();
+        }
+    });
+}
+
+fn test_list() {
+    let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let key = "hello_list";
+    let count = 10_0000;
+    let values: Vec<String> = (0..count).map(|i| format!("field_{}", i)).collect();
+
+    common::benchmark_test_case("list_left_push", count, |_| {
+        for v in &values {
+            db.list_left_push(key, v.as_bytes()).unwrap();
+        }
+    });
+    common::benchmark_test_case("list_count", count, |_| {
+        for _ in &values {
+            db.list_count(key).unwrap();
+        }
+    });
+    common::benchmark_test_case("list_left_pop", count, |_| {
+        for _ in &values {
+            db.list_left_pop(key).unwrap();
+        }
+    });
+    common::benchmark_test_case("list_right_push", count, |_| {
+        for v in &values {
+            db.list_right_push(key, v.as_bytes()).unwrap();
+        }
+    });
+    common::benchmark_test_case("list_count", count, |_| {
+        for _ in &values {
+            db.list_count(key).unwrap();
+        }
+    });
+    common::benchmark_test_case("list_right_pop", count, |_| {
+        for _ in &values {
+            db.list_right_pop(key).unwrap();
         }
     });
 }
