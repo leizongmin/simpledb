@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::Rng;
 
-use cedar::database::Database;
+use cedar::Database;
 
 #[allow(dead_code)]
 pub fn get_random_database_path() -> String {

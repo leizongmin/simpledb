@@ -1,5 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub mod database;
+mod database;
 pub mod encoding;
+
+pub use database::Database;
+pub use encoding::{BytesComparableScore, KeyMeta, KeyType};

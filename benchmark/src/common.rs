@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::Rng;
 
-use cedar::database::Database;
+use cedar::Database;
 
 #[allow(dead_code)]
 pub fn benchmark_test_case<F>(title: &str, count: usize, mut f: F)
