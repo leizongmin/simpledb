@@ -1,12 +1,29 @@
 use cedar::encoding::get_score_bytes;
+use std::thread;
+use std::time::Duration;
+use std::sync::{Arc, Mutex};
 
 pub mod common;
 
 fn main() {
+    test_multi_threading();
     test_map();
     test_set();
     test_list();
     test_sorted_list();
+}
+
+fn test_multi_threading() {
+    let db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let db = Arc::new(Mutex::new(db));
+    for i in 0..3 {
+        let db = db.clone();
+        thread::spawn(move || {
+            let ret = db.lock().unwrap().get_meta("a").unwrap();
+            println!("{:?}", ret);
+        });
+    }
+    thread::sleep(Duration::from_millis(50));
 }
 
 fn test_map() {
