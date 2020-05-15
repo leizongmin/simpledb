@@ -55,3 +55,10 @@ pub fn open_database_with_path(path: &str) -> Database {
     println!("open database: {}", db.path);
     db
 }
+
+#[macro_export]
+macro_rules! open_database {
+    () => {
+        crate::common::open_database_with_path(crate::common::get_random_database_path().as_str())
+    };
+}

@@ -1,8 +1,9 @@
 use cedar::encoding::get_score_bytes;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::sync::{Arc, Mutex};
 
+#[macro_use]
 pub mod common;
 
 fn main() {
@@ -14,9 +15,9 @@ fn main() {
 }
 
 fn test_multi_threading() {
-    let db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let db = open_database!();
     let db = Arc::new(Mutex::new(db));
-    for i in 0..3 {
+    for _ in 0..3 {
         let db = db.clone();
         thread::spawn(move || {
             let ret = db.lock().unwrap().get_meta("a").unwrap();
@@ -27,7 +28,7 @@ fn test_multi_threading() {
 }
 
 fn test_map() {
-    let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let mut db = open_database!();
     let key = "hello_map";
     let value = "hello, world".as_bytes();
     let count = 10_0000;
@@ -56,7 +57,7 @@ fn test_map() {
 }
 
 fn test_set() {
-    let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let mut db = open_database!();
     let key = "hello_set";
     let count = 10_0000;
     let values: Vec<String> = (0..count).map(|i| format!("field_{}", i)).collect();
@@ -84,7 +85,7 @@ fn test_set() {
 }
 
 fn test_list() {
-    let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let mut db = open_database!();
     let key = "hello_list";
     let count = 10_0000;
     let values: Vec<String> = (0..count).map(|i| format!("field_{}", i)).collect();
@@ -122,7 +123,7 @@ fn test_list() {
 }
 
 fn test_sorted_list() {
-    let mut db = common::open_database_with_path(common::get_random_database_path().as_str());
+    let mut db = open_database!();
     let key = "hello_sorted_list";
     let count = 1_0000;
     let items: Vec<(Vec<u8>, String)> = (0..count)
