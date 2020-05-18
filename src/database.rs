@@ -1,4 +1,4 @@
-use rocksdb::{Direction, Error, IteratorMode, Options, ReadOptions, DB};
+use rocksdb::{Direction, Error, IteratorMode, Options as RocksDBOptions, ReadOptions, DB};
 
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
@@ -7,19 +7,37 @@ use super::encoding::*;
 pub struct Database {
     pub path: String,
     pub db: DB,
+    pub options: Options,
     next_key_id: u64,
 }
 
-const SORTED_LIST_COMPACT_EVERY_DELETES_COUNT: u32 = 300;
+pub struct Options {
+    pub sorted_list_compact_deletes_count: u32,
+    pub delete_meta_when_empty: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            sorted_list_compact_deletes_count: 300,
+            delete_meta_when_empty: true,
+        }
+    }
+}
 
 impl Database {
     pub fn open(path: &str) -> Result<Database, Error> {
-        let mut opts = Options::default();
+        Database::open_with_options(path, Options::default())
+    }
+
+    pub fn open_with_options(path: &str, options: Options) -> Result<Database, Error> {
+        let mut opts = RocksDBOptions::default();
         opts.create_if_missing(true);
         let db = DB::open(&opts, path)?;
         let mut db = Database {
             path: String::from(path),
             db,
+            options,
             next_key_id: 1,
         };
         db.after_open();
@@ -27,7 +45,7 @@ impl Database {
     }
 
     pub fn destroy(path: &str) -> Result<(), Error> {
-        DB::destroy(&Options::default(), path)
+        DB::destroy(&RocksDBOptions::default(), path)
     }
 
     fn after_open(&mut self) {
@@ -57,7 +75,7 @@ impl Database {
     }
 
     pub fn save_meta(&self, key: &str, meta: &KeyMeta, delete_if_empty: bool) -> Result<(), Error> {
-        if delete_if_empty && meta.count < 1 {
+        if self.options.delete_meta_when_empty && delete_if_empty && meta.count < 1 {
             self.db.delete(encode_meta_key(key))
         } else {
             self.db.put(encode_meta_key(key), meta.get_bytes())
@@ -402,7 +420,7 @@ impl Database {
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
                 if left_deleted_count > 0
-                    && left_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0
+                    && left_deleted_count % self.options.sorted_list_compact_deletes_count == 0
                 {
                     self.db
                         .compact_range(Some(encode_data_key(meta.id).as_ref()), Some(k.as_ref()));
@@ -451,7 +469,7 @@ impl Database {
                 self.db.delete(k.as_ref())?;
                 meta.count -= 1;
                 if right_deleted_count > 0
-                    && right_deleted_count % SORTED_LIST_COMPACT_EVERY_DELETES_COUNT == 0
+                    && right_deleted_count % self.options.sorted_list_compact_deletes_count == 0
                 {
                     self.db
                         .compact_range(Some(k.as_ref()), Some(next_prefix.as_ref()));
