@@ -12,13 +12,17 @@ pub struct Database {
 }
 
 pub struct Options {
+    pub rocksdb_options: RocksDBOptions,
     pub sorted_list_compact_deletes_count: u32,
     pub delete_meta_when_empty: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
+        let mut rocksdb_options = RocksDBOptions::default();
+        rocksdb_options.create_if_missing(true);
         Options {
+            rocksdb_options,
             sorted_list_compact_deletes_count: 300,
             delete_meta_when_empty: true,
         }
@@ -33,9 +37,7 @@ impl Database {
     }
 
     pub fn open_with_options(path: &str, options: Options) -> Result<Database> {
-        let mut opts = RocksDBOptions::default();
-        opts.create_if_missing(true);
-        let db = DB::open(&opts, path)?;
+        let db = DB::open(&options.rocksdb_options, path)?;
         let mut db = Database {
             path: String::from(path),
             rocksdb: db,
