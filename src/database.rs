@@ -179,6 +179,10 @@ impl Database {
                 true
             });
             self.rocksdb.delete(encode_meta_key(key));
+            self.rocksdb.compact_range(
+                Some(encode_data_key(meta.id).as_ref()),
+                Some(encode_data_key(meta.id + 1).as_ref()),
+            );
         }
         Ok(deletes_count)
     }
