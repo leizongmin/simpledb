@@ -333,3 +333,42 @@ fn test_sorted_list() {
         dump_database_data(&db, key);
     }
 }
+
+#[test]
+fn test_delete_all() {
+    let path = get_random_database_path();
+    let mut db = open_database_with_path(&path);
+    let count = 10;
+    let key1 = "hello";
+    let key2 = "world";
+    for i in 1..=count {
+        db.map_put(
+            key1,
+            format!("key_{}", i).as_str(),
+            get_score_bytes(i).as_slice(),
+        )
+        .unwrap();
+    }
+    for i in 1..=count {
+        db.list_right_push(key2, get_score_bytes(i).as_slice())
+            .unwrap();
+    }
+
+    dump_database_meta(&db);
+    dump_database_data(&db, key1);
+    dump_database_data(&db, key2);
+
+    db.delete_all(key1);
+    dump_database_meta(&db);
+    dump_database_data(&db, key1);
+    dump_database_data(&db, key2);
+    assert_eq!(0, db.get_count(key1).unwrap());
+    assert_eq!(count, db.get_count(key2).unwrap());
+
+    db.delete_all(key2);
+    dump_database_meta(&db);
+    dump_database_data(&db, key1);
+    dump_database_data(&db, key2);
+    assert_eq!(0, db.get_count(key1).unwrap());
+    assert_eq!(0, db.get_count(key2).unwrap());
+}

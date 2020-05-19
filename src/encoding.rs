@@ -174,6 +174,38 @@ impl BytesComparableScore for f32 {
     }
 }
 
+impl BytesComparableScore for u32 {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = BytesMut::with_capacity(5);
+        buf.put_slice(b">");
+        buf.put_u32(*self);
+        buf.to_vec()
+    }
+
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
+        b[1..].as_ref().to_bytes().get_u32()
+    }
+}
+
+impl BytesComparableScore for u64 {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = BytesMut::with_capacity(9);
+        buf.put_slice(b">");
+        buf.put_u64(*self);
+        buf.to_vec()
+    }
+
+    fn from_bytes(b: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
+        b[1..].as_ref().to_bytes().get_u64()
+    }
+}
+
 pub fn get_score_bytes<T>(score: T) -> Vec<u8>
 where
     T: BytesComparableScore,

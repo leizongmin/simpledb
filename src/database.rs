@@ -169,6 +169,20 @@ impl Database {
         })
     }
 
+    pub fn delete_all(&self, key: &str) -> Result<u64> {
+        let meta = self.get_meta(key)?;
+        let mut deletes_count = 0;
+        if let Some(meta) = meta {
+            self.for_each_data(key, |k, _| {
+                self.rocksdb.delete(k);
+                deletes_count += 1;
+                true
+            });
+            self.rocksdb.delete(encode_meta_key(key));
+        }
+        Ok(deletes_count)
+    }
+
     pub fn map_count(&self, key: &str) -> Result<u64> {
         self.get_count(key)
     }
