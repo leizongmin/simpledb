@@ -110,7 +110,7 @@ impl Database {
         F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
-        self.prefix_iterator(*PREFIX_META, |k, v| {
+        self.prefix_iterator(PREFIX_META, |k, v| {
             counter = counter + 1;
             f(
                 decode_meta_key(k.as_ref()).as_str(),
@@ -125,7 +125,7 @@ impl Database {
         F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
-        self.prefix_iterator(*PREFIX_META, |k, v| {
+        self.prefix_iterator(PREFIX_META, |k, v| {
             counter = counter + 1;
             if counter > limit {
                 false
@@ -239,7 +239,7 @@ impl Database {
             meta.count += 1;
             is_new_item = true;
         }
-        self.rocksdb.put(&full_key, *FILL_EMPTY_DATA)?;
+        self.rocksdb.put(&full_key, FILL_EMPTY_DATA)?;
         if is_new_item {
             self.save_meta(key, &meta, false)?;
         }

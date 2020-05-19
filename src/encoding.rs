@@ -1,10 +1,8 @@
 use bytes::{Buf, BufMut, BytesMut};
 
-lazy_static! {
-    pub static ref PREFIX_META: &'static [u8] = b"m";
-    pub static ref PREFIX_DATA: &'static [u8] = b"d";
-    pub static ref FILL_EMPTY_DATA: &'static [u8] = b"";
-}
+pub static PREFIX_META: &'static [u8] = b"m";
+pub static PREFIX_DATA: &'static [u8] = b"d";
+pub static FILL_EMPTY_DATA: &'static [u8] = b"";
 
 pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
     prefix.iter().zip(key).take_while(|(x, y)| x == y).count() == prefix.len()
@@ -12,7 +10,7 @@ pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
 
 pub fn encode_meta_key(key: &str) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
-    buf.put_slice(*PREFIX_META);
+    buf.put_slice(PREFIX_META);
     buf.put_slice(key.as_bytes());
     buf
 }
@@ -23,7 +21,7 @@ pub fn decode_meta_key(key: &[u8]) -> String {
 
 pub fn encode_data_key(key_id: u64) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
-    buf.put_slice(*PREFIX_DATA);
+    buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
     buf
 }
@@ -31,7 +29,7 @@ pub fn encode_data_key(key_id: u64) -> BytesMut {
 pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
     let field = field.as_bytes();
     let mut buf = BytesMut::with_capacity(9 + field.len());
-    buf.put_slice(*PREFIX_DATA);
+    buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
     buf.put_slice(field);
     buf
@@ -43,7 +41,7 @@ pub fn decode_data_key_map_item(key: &[u8]) -> String {
 
 pub fn encode_data_key_set_item(key_id: u64, value: &[u8]) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9 + value.len());
-    buf.put_slice(*PREFIX_DATA);
+    buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
     buf.put_slice(value);
     buf
@@ -55,7 +53,7 @@ pub fn decode_data_key_set_item(key: &[u8]) -> &[u8] {
 
 pub fn encode_data_key_list_item(key_id: u64, position: i64) -> BytesMut {
     let mut buf = BytesMut::with_capacity(18);
-    buf.put_slice(*PREFIX_DATA);
+    buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
     if position >= 0 {
         buf.put_slice(b">");
@@ -68,7 +66,7 @@ pub fn encode_data_key_list_item(key_id: u64, position: i64) -> BytesMut {
 
 pub fn encode_data_key_sorted_list_item(key_id: u64, score: &[u8], sequence: u64) -> BytesMut {
     let mut buf = BytesMut::with_capacity(17 + score.len());
-    buf.put_slice(*PREFIX_DATA);
+    buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
     buf.put_slice(score);
     buf.put_u64(sequence);
