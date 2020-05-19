@@ -358,14 +358,14 @@ fn test_delete_all() {
     dump_database_data(&db, key1);
     dump_database_data(&db, key2);
 
-    db.delete_all(key1);
+    db.delete_all(key1).unwrap();
     dump_database_meta(&db);
     dump_database_data(&db, key1);
     dump_database_data(&db, key2);
     assert_eq!(0, db.get_count(key1).unwrap());
     assert_eq!(count, db.get_count(key2).unwrap());
 
-    db.delete_all(key2);
+    db.delete_all(key2).unwrap();
     dump_database_meta(&db);
     dump_database_data(&db, key1);
     dump_database_data(&db, key2);

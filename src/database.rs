@@ -208,19 +208,18 @@ impl Database {
     }
 
     pub fn map_delete(&mut self, key: &str, field: &str) -> Result<bool> {
-        let meta = self.get_meta(key)?;
-        if meta.is_none() {
-            Ok(false)
-        } else {
-            let mut meta = meta.unwrap();
-            let full_key = encode_data_key_map_item(meta.id, field);
-            if self.rocksdb.get(&full_key)?.is_some() {
-                meta.count -= 1;
-                self.rocksdb.delete(&full_key)?;
-                self.save_meta(key, &meta, true)?;
-                Ok(true)
-            } else {
-                Ok(false)
+        match self.get_meta(key)? {
+            None => Ok(false),
+            Some(mut meta) => {
+                let full_key = encode_data_key_map_item(meta.id, field);
+                if self.rocksdb.get(&full_key)?.is_some() {
+                    meta.count -= 1;
+                    self.rocksdb.delete(&full_key)?;
+                    self.save_meta(key, &meta, true)?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
             }
         }
     }
@@ -265,30 +264,28 @@ impl Database {
     }
 
     pub fn set_is_member(&mut self, key: &str, value: &[u8]) -> Result<bool> {
-        let meta = self.get_meta(key)?;
-        if meta.is_none() {
-            Ok(false)
-        } else {
-            let meta = meta.unwrap();
-            let full_key = encode_data_key_set_item(meta.id, value);
-            Ok(self.rocksdb.get(&full_key)?.is_some())
+        match self.get_meta(key)? {
+            None => Ok(false),
+            Some(meta) => {
+                let full_key = encode_data_key_set_item(meta.id, value);
+                Ok(self.rocksdb.get(&full_key)?.is_some())
+            }
         }
     }
 
     pub fn set_delete(&mut self, key: &str, value: &[u8]) -> Result<bool> {
-        let meta = self.get_meta(key)?;
-        if meta.is_none() {
-            Ok(false)
-        } else {
-            let mut meta = meta.unwrap();
-            let full_key = encode_data_key_set_item(meta.id, value);
-            if self.rocksdb.get(&full_key)?.is_some() {
-                meta.count -= 1;
-                self.rocksdb.delete(full_key)?;
-                self.save_meta(key, &meta, true)?;
-                Ok(true)
-            } else {
-                Ok(false)
+        match self.get_meta(key)? {
+            None => Ok(false),
+            Some(mut meta) => {
+                let full_key = encode_data_key_set_item(meta.id, value);
+                if self.rocksdb.get(&full_key)?.is_some() {
+                    meta.count -= 1;
+                    self.rocksdb.delete(full_key)?;
+                    self.save_meta(key, &meta, true)?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
             }
         }
     }
@@ -340,44 +337,42 @@ impl Database {
     }
 
     pub fn list_left_pop(&mut self, key: &str) -> Result<Option<Box<[u8]>>> {
-        let meta = self.get_meta(key)?;
-        if meta.is_some() {
-            let mut meta = meta.unwrap();
-            let (left, right) = meta.decode_list_extra();
-            let full_key = encode_data_key_list_item(meta.id, left + 1);
-            match self.rocksdb.get(full_key.as_ref())? {
-                Some(value) => {
-                    meta.encode_list_extra(left + 1, right);
-                    meta.count -= 1;
-                    self.save_meta(key, &meta, true)?;
-                    self.rocksdb.delete(full_key.as_ref())?;
-                    Ok(Some(Box::from(value)))
+        match self.get_meta(key)? {
+            None => Ok(None),
+            Some(mut meta) => {
+                let (left, right) = meta.decode_list_extra();
+                let full_key = encode_data_key_list_item(meta.id, left + 1);
+                match self.rocksdb.get(full_key.as_ref())? {
+                    Some(value) => {
+                        meta.encode_list_extra(left + 1, right);
+                        meta.count -= 1;
+                        self.save_meta(key, &meta, true)?;
+                        self.rocksdb.delete(full_key.as_ref())?;
+                        Ok(Some(Box::from(value)))
+                    }
+                    None => Ok(None),
                 }
-                None => Ok(None),
             }
-        } else {
-            Ok(None)
         }
     }
 
     pub fn list_right_pop(&mut self, key: &str) -> Result<Option<Box<[u8]>>> {
-        let meta = self.get_meta(key)?;
-        if meta.is_some() {
-            let mut meta = meta.unwrap();
-            let (left, right) = meta.decode_list_extra();
-            let full_key = encode_data_key_list_item(meta.id, right - 1);
-            match self.rocksdb.get(full_key.as_ref())? {
-                Some(value) => {
-                    meta.encode_list_extra(left, right - 1);
-                    meta.count -= 1;
-                    self.save_meta(key, &meta, true)?;
-                    self.rocksdb.delete(full_key.as_ref())?;
-                    Ok(Some(Box::from(value)))
+        match self.get_meta(key)? {
+            None => Ok(None),
+            Some(mut meta) => {
+                let (left, right) = meta.decode_list_extra();
+                let full_key = encode_data_key_list_item(meta.id, right - 1);
+                match self.rocksdb.get(full_key.as_ref())? {
+                    Some(value) => {
+                        meta.encode_list_extra(left, right - 1);
+                        meta.count -= 1;
+                        self.save_meta(key, &meta, true)?;
+                        self.rocksdb.delete(full_key.as_ref())?;
+                        Ok(Some(Box::from(value)))
+                    }
+                    None => Ok(None),
                 }
-                None => Ok(None),
             }
-        } else {
-            Ok(None)
         }
     }
 
