@@ -85,7 +85,7 @@ fn test_map() {
         db.for_each_key(|_, _| {
             counter += 1;
             true
-        });
+        }).unwrap();
         assert_eq!(0, counter);
     }
 }

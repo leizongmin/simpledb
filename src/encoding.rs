@@ -1,4 +1,5 @@
 use bytes::{Buf, BufMut, BytesMut};
+use std::string::FromUtf8Error;
 
 pub static PREFIX_META: &'static [u8] = b"m";
 pub static PREFIX_DATA: &'static [u8] = b"d";
@@ -15,8 +16,8 @@ pub fn encode_meta_key(key: &str) -> BytesMut {
     buf
 }
 
-pub fn decode_meta_key(key: &[u8]) -> String {
-    String::from_utf8(key[1..].to_vec()).unwrap()
+pub fn decode_meta_key(key: &[u8]) -> Result<String, FromUtf8Error> {
+    String::from_utf8(key[1..].to_vec())
 }
 
 pub fn encode_data_key(key_id: u64) -> BytesMut {
@@ -35,8 +36,8 @@ pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
     buf
 }
 
-pub fn decode_data_key_map_item(key: &[u8]) -> String {
-    String::from_utf8(key[9..].to_vec()).unwrap()
+pub fn decode_data_key_map_item(key: &[u8]) -> Result<String, FromUtf8Error> {
+    String::from_utf8(key[9..].to_vec())
 }
 
 pub fn encode_data_key_set_item(key_id: u64, value: &[u8]) -> BytesMut {

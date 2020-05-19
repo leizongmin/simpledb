@@ -77,7 +77,7 @@ impl Database {
             options,
             next_key_id: 1,
         };
-        db.after_open();
+        db.after_open()?;
         Ok(db)
     }
 
@@ -85,13 +85,14 @@ impl Database {
         Ok(DB::destroy(&RocksDBOptions::default(), path)?)
     }
 
-    fn after_open(&mut self) {
+    fn after_open(&mut self) -> Result<()> {
         let mut last_key_id: u64 = 0;
         self.for_each_key(|_, m| {
             last_key_id = m.id;
             true
-        });
+        })?;
         self.next_key_id = last_key_id + 1;
+        Ok(())
     }
 
     fn prefix_iterator<F>(&self, prefix: &[u8], mut f: F)
@@ -139,38 +140,52 @@ impl Database {
         };
     }
 
-    pub fn for_each_key<F>(&self, mut f: F) -> usize
+    pub fn for_each_key<F>(&self, mut f: F) -> Result<usize>
     where
         F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
+        let mut has_error = None;
         self.prefix_iterator(PREFIX_META, |k, v| {
             counter = counter + 1;
-            f(
-                decode_meta_key(k.as_ref()).as_str(),
-                &KeyMeta::from_bytes(v.as_ref()),
-            )
+            match decode_meta_key(k.as_ref()) {
+                Ok(key) => f(key.as_str(), &KeyMeta::from_bytes(v.as_ref())),
+                Err(err) => {
+                    has_error = Some(err);
+                    false
+                }
+            }
         });
-        counter
+        match has_error {
+            None => Ok(counter),
+            Some(err) => Err(err.into()),
+        }
     }
 
-    pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) -> usize
+    pub fn for_each_key_with_limit<F>(&self, limit: usize, mut f: F) -> Result<usize>
     where
         F: FnMut(&str, &KeyMeta) -> bool,
     {
         let mut counter: usize = 0;
+        let mut has_error = None;
         self.prefix_iterator(PREFIX_META, |k, v| {
             counter = counter + 1;
             if counter > limit {
                 false
             } else {
-                f(
-                    decode_meta_key(k.as_ref()).as_str(),
-                    &KeyMeta::from_bytes(v.as_ref()),
-                )
+                match decode_meta_key(k.as_ref()) {
+                    Ok(key) => f(key.as_str(), &KeyMeta::from_bytes(v.as_ref())),
+                    Err(err) => {
+                        has_error = Some(err);
+                        false
+                    }
+                }
             }
         });
-        counter
+        match has_error {
+            None => Ok(counter),
+            Some(err) => Err(err.into()),
+        }
     }
 
     pub fn for_each_data<F>(&self, key: &str, mut f: F) -> Result<u64>
@@ -207,11 +222,20 @@ impl Database {
         let meta = self.get_meta(key)?;
         let mut deletes_count = 0;
         if let Some(meta) = meta {
+            let mut has_error = None;
             self.for_each_data(key, |k, _| {
-                self.rocksdb.delete(k);
                 deletes_count += 1;
-                true
+                match self.rocksdb.delete(k) {
+                    Ok(_) => true,
+                    Err(err) => {
+                        has_error = Some(err);
+                        false
+                    }
+                }
             })?;
+            if let Some(err) = has_error {
+                return Err(err.into());
+            }
             self.rocksdb.delete(encode_meta_key(key))?;
             self.rocksdb.compact_range(
                 Some(encode_data_key(meta.id).as_ref()),
@@ -262,10 +286,18 @@ impl Database {
     where
         F: FnMut(&str, Box<[u8]>) -> bool,
     {
-        self.for_each_data(key, |k, v| {
-            let k = decode_data_key_map_item(k.as_ref());
-            f(&k, v)
-        })
+        let mut has_error = None;
+        let count = self.for_each_data(key, |k, v| match decode_data_key_map_item(k.as_ref()) {
+            Ok(k) => f(&k, v),
+            Err(err) => {
+                has_error = Some(err);
+                false
+            }
+        })?;
+        match has_error {
+            None => Ok(count),
+            Some(err) => Err(err.into()),
+        }
     }
 
     pub fn map_items(&mut self, key: &str) -> Result<Vec<(String, Box<[u8]>)>> {

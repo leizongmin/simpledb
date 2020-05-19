@@ -39,7 +39,7 @@ pub fn dump_database_meta(db: &Database) {
     db.for_each_key(|k, m| {
         println!("key: {:?}\t value: {:?}", k, m);
         true
-    });
+    }).unwrap();
 }
 
 #[allow(dead_code)]
