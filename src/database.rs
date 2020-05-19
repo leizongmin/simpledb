@@ -6,7 +6,7 @@ use super::encoding::*;
 
 pub struct Database {
     pub path: String,
-    pub db: DB,
+    pub rocksdb: DB,
     pub options: Options,
     next_key_id: u64,
 }
@@ -38,7 +38,7 @@ impl Database {
         let db = DB::open(&opts, path)?;
         let mut db = Database {
             path: String::from(path),
-            db,
+            rocksdb: db,
             options,
             next_key_id: 1,
         };
@@ -64,7 +64,7 @@ impl Database {
         F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
     {
         let iter = self
-            .db
+            .rocksdb
             .iterator(IteratorMode::From(prefix, Direction::Forward));
         for (k, v) in iter {
             if !has_prefix(prefix, k.as_ref()) {
@@ -78,14 +78,14 @@ impl Database {
 
     pub fn save_meta(&self, key: &str, meta: &KeyMeta, delete_if_empty: bool) -> Result<()> {
         if self.options.delete_meta_when_empty && delete_if_empty && meta.count < 1 {
-            self.db.delete(encode_meta_key(key))
+            self.rocksdb.delete(encode_meta_key(key))
         } else {
-            self.db.put(encode_meta_key(key), meta.get_bytes())
+            self.rocksdb.put(encode_meta_key(key), meta.get_bytes())
         }
     }
 
     pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>> {
-        self.db
+        self.rocksdb
             .get(encode_meta_key(key))
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))
     }
@@ -174,16 +174,16 @@ impl Database {
     pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
         let meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
-        self.db.get(full_key)
+        self.rocksdb.get(full_key)
     }
 
     pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<()> {
         let mut meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
-        if self.db.get(&full_key)?.is_none() {
+        if self.rocksdb.get(&full_key)?.is_none() {
             meta.count += 1;
         }
-        self.db.put(&full_key, value)?;
+        self.rocksdb.put(&full_key, value)?;
         self.save_meta(key, &meta, false)
     }
 
@@ -194,9 +194,9 @@ impl Database {
         } else {
             let mut meta = meta.unwrap();
             let full_key = encode_data_key_map_item(meta.id, field);
-            if self.db.get(&full_key)?.is_some() {
+            if self.rocksdb.get(&full_key)?.is_some() {
                 meta.count -= 1;
-                self.db.delete(&full_key)?;
+                self.rocksdb.delete(&full_key)?;
                 self.save_meta(key, &meta, true)?;
                 Ok(true)
             } else {
@@ -233,11 +233,11 @@ impl Database {
         let mut meta = self.get_or_create_meta(key, KeyType::Set)?;
         let full_key = encode_data_key_set_item(meta.id, value);
         let mut is_new_item = false;
-        if self.db.get(&full_key)?.is_none() {
+        if self.rocksdb.get(&full_key)?.is_none() {
             meta.count += 1;
             is_new_item = true;
         }
-        self.db.put(&full_key, *FILL_EMPTY_DATA)?;
+        self.rocksdb.put(&full_key, *FILL_EMPTY_DATA)?;
         if is_new_item {
             self.save_meta(key, &meta, false)?;
         }
@@ -251,7 +251,7 @@ impl Database {
         } else {
             let meta = meta.unwrap();
             let full_key = encode_data_key_set_item(meta.id, value);
-            Ok(self.db.get(&full_key)?.is_some())
+            Ok(self.rocksdb.get(&full_key)?.is_some())
         }
     }
 
@@ -262,9 +262,9 @@ impl Database {
         } else {
             let mut meta = meta.unwrap();
             let full_key = encode_data_key_set_item(meta.id, value);
-            if self.db.get(&full_key)?.is_some() {
+            if self.rocksdb.get(&full_key)?.is_some() {
                 meta.count -= 1;
-                self.db.delete(full_key)?;
+                self.rocksdb.delete(full_key)?;
                 self.save_meta(key, &meta, true)?;
                 Ok(true)
             } else {
@@ -301,7 +301,7 @@ impl Database {
         let mut meta = self.get_or_create_meta(key, KeyType::List)?;
         let (left, right) = meta.decode_list_extra();
         let full_key = encode_data_key_list_item(meta.id, left);
-        self.db.put(full_key, value)?;
+        self.rocksdb.put(full_key, value)?;
         meta.encode_list_extra(left - 1, right);
         meta.count += 1;
         self.save_meta(key, &meta, false)?;
@@ -312,7 +312,7 @@ impl Database {
         let mut meta = self.get_or_create_meta(key, KeyType::List)?;
         let (left, right) = meta.decode_list_extra();
         let full_key = encode_data_key_list_item(meta.id, right);
-        self.db.put(full_key, value)?;
+        self.rocksdb.put(full_key, value)?;
         meta.encode_list_extra(left, right + 1);
         meta.count += 1;
         self.save_meta(key, &meta, false)?;
@@ -325,12 +325,12 @@ impl Database {
             let mut meta = meta.unwrap();
             let (left, right) = meta.decode_list_extra();
             let full_key = encode_data_key_list_item(meta.id, left + 1);
-            match self.db.get(full_key.as_ref())? {
+            match self.rocksdb.get(full_key.as_ref())? {
                 Some(value) => {
                     meta.encode_list_extra(left + 1, right);
                     meta.count -= 1;
                     self.save_meta(key, &meta, true)?;
-                    self.db.delete(full_key.as_ref())?;
+                    self.rocksdb.delete(full_key.as_ref())?;
                     Ok(Some(Box::from(value)))
                 }
                 None => Ok(None),
@@ -346,12 +346,12 @@ impl Database {
             let mut meta = meta.unwrap();
             let (left, right) = meta.decode_list_extra();
             let full_key = encode_data_key_list_item(meta.id, right - 1);
-            match self.db.get(full_key.as_ref())? {
+            match self.rocksdb.get(full_key.as_ref())? {
                 Some(value) => {
                     meta.encode_list_extra(left, right - 1);
                     meta.count -= 1;
                     self.save_meta(key, &meta, true)?;
-                    self.db.delete(full_key.as_ref())?;
+                    self.rocksdb.delete(full_key.as_ref())?;
                     Ok(Some(Box::from(value)))
                 }
                 None => Ok(None),
@@ -388,7 +388,7 @@ impl Database {
         let full_key = encode_data_key_sorted_list_item(meta.id, score, sequence);
         meta.encode_sorted_list_extra(sequence + 1, left_deleted_count, right_deleted_count);
         meta.count += 1;
-        self.db.put(full_key, value)?;
+        self.rocksdb.put(full_key, value)?;
         self.save_meta(key, &meta, false)?;
         Ok(meta.count)
     }
@@ -407,7 +407,7 @@ impl Database {
             let mut opts = ReadOptions::default();
             opts.set_prefix_same_as_start(true);
             let iter = self
-                .db
+                .rocksdb
                 .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
@@ -419,12 +419,12 @@ impl Database {
                         break;
                     }
                 }
-                self.db.delete(k.as_ref())?;
+                self.rocksdb.delete(k.as_ref())?;
                 meta.count -= 1;
                 if left_deleted_count > 0
                     && left_deleted_count % self.options.sorted_list_compact_deletes_count == 0
                 {
-                    self.db
+                    self.rocksdb
                         .compact_range(Some(encode_data_key(meta.id).as_ref()), Some(k.as_ref()));
                     meta.encode_sorted_list_extra(sequence, 0, right_deleted_count);
                 } else {
@@ -456,7 +456,7 @@ impl Database {
             let next_prefix = encode_data_key(meta.id + 1);
             let opts = ReadOptions::default();
             let iter = self
-                .db
+                .rocksdb
                 .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
             for (k, v) in iter {
                 if !has_prefix(&prefix, k.as_ref()) {
@@ -468,12 +468,12 @@ impl Database {
                         break;
                     }
                 }
-                self.db.delete(k.as_ref())?;
+                self.rocksdb.delete(k.as_ref())?;
                 meta.count -= 1;
                 if right_deleted_count > 0
                     && right_deleted_count % self.options.sorted_list_compact_deletes_count == 0
                 {
-                    self.db
+                    self.rocksdb
                         .compact_range(Some(k.as_ref()), Some(next_prefix.as_ref()));
                     meta.encode_sorted_list_extra(sequence, left_deleted_count, 0);
                 } else {
