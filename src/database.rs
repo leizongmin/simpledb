@@ -1,8 +1,12 @@
-use rocksdb::{Direction, Error, IteratorMode, Options as RocksDBOptions, ReadOptions, DB};
+use rocksdb::{
+    Direction, Error as RocksDBError, IteratorMode, Options as RocksDBOptions, ReadOptions, DB,
+};
 
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
 use super::encoding::*;
+use std::fmt::Formatter;
+use std::string::FromUtf8Error;
 
 pub struct Database {
     pub path: String,
@@ -31,6 +35,35 @@ impl Default for Options {
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+#[derive(Debug, Clone)]
+pub enum Error {
+    FromUtf8Error(FromUtf8Error),
+    RocksDBError(RocksDBError),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::FromUtf8Error(err) => write!(f, "FromUtf8Error: {}", err),
+            Error::RocksDBError(err) => write!(f, "RocksDBError: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<FromUtf8Error> for Error {
+    fn from(e: FromUtf8Error) -> Self {
+        Error::FromUtf8Error(e)
+    }
+}
+
+impl From<RocksDBError> for Error {
+    fn from(e: RocksDBError) -> Self {
+        Error::RocksDBError(e)
+    }
+}
+
 impl Database {
     pub fn open(path: &str) -> Result<Database> {
         Database::open_with_options(path, Options::default())
@@ -49,7 +82,7 @@ impl Database {
     }
 
     pub fn destroy(path: &str) -> Result<()> {
-        DB::destroy(&RocksDBOptions::default(), path)
+        Ok(DB::destroy(&RocksDBOptions::default(), path)?)
     }
 
     fn after_open(&mut self) {
@@ -80,16 +113,17 @@ impl Database {
 
     pub fn save_meta(&self, key: &str, meta: &KeyMeta, delete_if_empty: bool) -> Result<()> {
         if self.options.delete_meta_when_empty && delete_if_empty && meta.count < 1 {
-            self.rocksdb.delete(encode_meta_key(key))
+            Ok(self.rocksdb.delete(encode_meta_key(key))?)
         } else {
-            self.rocksdb.put(encode_meta_key(key), meta.get_bytes())
+            Ok(self.rocksdb.put(encode_meta_key(key), meta.get_bytes())?)
         }
     }
 
     pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>> {
-        self.rocksdb
+        Ok(self
+            .rocksdb
             .get(encode_meta_key(key))
-            .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))
+            .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))?)
     }
 
     pub fn get_or_create_meta(&mut self, key: &str, key_type: KeyType) -> Result<KeyMeta> {
@@ -194,7 +228,7 @@ impl Database {
     pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
         let meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
-        self.rocksdb.get(full_key)
+        Ok(self.rocksdb.get(full_key)?)
     }
 
     pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<()> {
