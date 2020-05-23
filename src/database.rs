@@ -1,3 +1,7 @@
+use std::cell::Cell;
+use std::fmt::Formatter;
+use std::string::FromUtf8Error;
+
 use rocksdb::{
     Direction, Error as RocksDBError, IteratorMode, Options as RocksDBOptions, ReadOptions, DB,
 };
@@ -5,14 +9,12 @@ use rocksdb::{
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
 use super::encoding::*;
-use std::fmt::Formatter;
-use std::string::FromUtf8Error;
 
 pub struct Database {
     pub path: String,
     pub rocksdb: DB,
     pub options: Options,
-    next_key_id: u64,
+    next_key_id: Cell<u64>,
 }
 
 pub struct Options {
@@ -75,7 +77,7 @@ impl Database {
             path: String::from(path),
             rocksdb: db,
             options,
-            next_key_id: 1,
+            next_key_id: Cell::new(1),
         };
         db.after_open()?;
         Ok(db)
@@ -91,7 +93,7 @@ impl Database {
             last_key_id = m.id;
             true
         })?;
-        self.next_key_id = last_key_id + 1;
+        self.next_key_id.set(last_key_id + 1);
         Ok(())
     }
 
@@ -127,13 +129,13 @@ impl Database {
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))?)
     }
 
-    pub fn get_or_create_meta(&mut self, key: &str, key_type: KeyType) -> Result<KeyMeta> {
+    pub fn get_or_create_meta(&self, key: &str, key_type: KeyType) -> Result<KeyMeta> {
         let m = self.get_meta(key)?;
         return match m {
             Some(m) => Ok(m),
             None => {
-                let m = KeyMeta::new(self.next_key_id, key_type);
-                self.next_key_id += 1;
+                let m = KeyMeta::new(self.next_key_id.get(), key_type);
+                self.next_key_id.set(self.next_key_id.get() + 1);
                 self.save_meta(key, &m, false)?;
                 Ok(m)
             }
@@ -249,13 +251,13 @@ impl Database {
         self.get_count(key)
     }
 
-    pub fn map_get(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
+    pub fn map_get(&self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
         let meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         Ok(self.rocksdb.get(full_key)?)
     }
 
-    pub fn map_put(&mut self, key: &str, field: &str, value: &[u8]) -> Result<()> {
+    pub fn map_put(&self, key: &str, field: &str, value: &[u8]) -> Result<()> {
         let mut meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         if self.rocksdb.get(&full_key)?.is_none() {
@@ -265,7 +267,7 @@ impl Database {
         self.save_meta(key, &meta, false)
     }
 
-    pub fn map_delete(&mut self, key: &str, field: &str) -> Result<bool> {
+    pub fn map_delete(&self, key: &str, field: &str) -> Result<bool> {
         match self.get_meta(key)? {
             None => Ok(false),
             Some(mut meta) => {
@@ -282,7 +284,7 @@ impl Database {
         }
     }
 
-    pub fn map_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64>
+    pub fn map_for_each<F>(&self, key: &str, mut f: F) -> Result<u64>
     where
         F: FnMut(&str, Box<[u8]>) -> bool,
     {
@@ -300,7 +302,7 @@ impl Database {
         }
     }
 
-    pub fn map_items(&mut self, key: &str) -> Result<Vec<(String, Box<[u8]>)>> {
+    pub fn map_items(&self, key: &str) -> Result<Vec<(String, Box<[u8]>)>> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.map_for_each(key, |f, v| {
@@ -314,7 +316,7 @@ impl Database {
         self.get_count(key)
     }
 
-    pub fn set_add(&mut self, key: &str, value: &[u8]) -> Result<bool> {
+    pub fn set_add(&self, key: &str, value: &[u8]) -> Result<bool> {
         let mut meta = self.get_or_create_meta(key, KeyType::Set)?;
         let full_key = encode_data_key_set_item(meta.id, value);
         let mut is_new_item = false;
@@ -329,7 +331,7 @@ impl Database {
         Ok(is_new_item)
     }
 
-    pub fn set_is_member(&mut self, key: &str, value: &[u8]) -> Result<bool> {
+    pub fn set_is_member(&self, key: &str, value: &[u8]) -> Result<bool> {
         match self.get_meta(key)? {
             None => Ok(false),
             Some(meta) => {
@@ -339,7 +341,7 @@ impl Database {
         }
     }
 
-    pub fn set_delete(&mut self, key: &str, value: &[u8]) -> Result<bool> {
+    pub fn set_delete(&self, key: &str, value: &[u8]) -> Result<bool> {
         match self.get_meta(key)? {
             None => Ok(false),
             Some(mut meta) => {
@@ -356,7 +358,7 @@ impl Database {
         }
     }
 
-    pub fn set_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64>
+    pub fn set_for_each<F>(&self, key: &str, mut f: F) -> Result<u64>
     where
         F: FnMut(Box<[u8]>) -> bool,
     {
@@ -366,7 +368,7 @@ impl Database {
         })
     }
 
-    pub fn set_items(&mut self, key: &str) -> Result<Vec<Box<[u8]>>> {
+    pub fn set_items(&self, key: &str) -> Result<Vec<Box<[u8]>>> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.set_for_each(key, |v| {
@@ -376,11 +378,11 @@ impl Database {
         Ok(vec)
     }
 
-    pub fn list_count(&mut self, key: &str) -> Result<u64> {
+    pub fn list_count(&self, key: &str) -> Result<u64> {
         self.get_count(key)
     }
 
-    pub fn list_left_push(&mut self, key: &str, value: &[u8]) -> Result<u64> {
+    pub fn list_left_push(&self, key: &str, value: &[u8]) -> Result<u64> {
         let mut meta = self.get_or_create_meta(key, KeyType::List)?;
         let (left, right) = meta.decode_list_extra();
         let full_key = encode_data_key_list_item(meta.id, left);
@@ -391,7 +393,7 @@ impl Database {
         Ok(meta.count)
     }
 
-    pub fn list_right_push(&mut self, key: &str, value: &[u8]) -> Result<u64> {
+    pub fn list_right_push(&self, key: &str, value: &[u8]) -> Result<u64> {
         let mut meta = self.get_or_create_meta(key, KeyType::List)?;
         let (left, right) = meta.decode_list_extra();
         let full_key = encode_data_key_list_item(meta.id, right);
@@ -402,7 +404,7 @@ impl Database {
         Ok(meta.count)
     }
 
-    pub fn list_left_pop(&mut self, key: &str) -> Result<Option<Box<[u8]>>> {
+    pub fn list_left_pop(&self, key: &str) -> Result<Option<Box<[u8]>>> {
         match self.get_meta(key)? {
             None => Ok(None),
             Some(mut meta) => {
@@ -422,7 +424,7 @@ impl Database {
         }
     }
 
-    pub fn list_right_pop(&mut self, key: &str) -> Result<Option<Box<[u8]>>> {
+    pub fn list_right_pop(&self, key: &str) -> Result<Option<Box<[u8]>>> {
         match self.get_meta(key)? {
             None => Ok(None),
             Some(mut meta) => {
@@ -442,14 +444,14 @@ impl Database {
         }
     }
 
-    pub fn list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64>
+    pub fn list_for_each<F>(&self, key: &str, mut f: F) -> Result<u64>
     where
         F: FnMut(Box<[u8]>) -> bool,
     {
         self.for_each_data(key, |_, v| f(Box::from(v)))
     }
 
-    pub fn list_items(&mut self, key: &str) -> Result<Vec<Box<[u8]>>> {
+    pub fn list_items(&self, key: &str) -> Result<Vec<Box<[u8]>>> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.list_for_each(key, |v| {
@@ -459,11 +461,11 @@ impl Database {
         Ok(vec)
     }
 
-    pub fn sorted_list_count(&mut self, key: &str) -> Result<u64> {
+    pub fn sorted_list_count(&self, key: &str) -> Result<u64> {
         self.get_count(key)
     }
 
-    pub fn sorted_list_add(&mut self, key: &str, score: &[u8], value: &[u8]) -> Result<u64> {
+    pub fn sorted_list_add(&self, key: &str, score: &[u8], value: &[u8]) -> Result<u64> {
         let mut meta = self.get_or_create_meta(key, KeyType::SortedList)?;
         let (sequence, left_deleted_count, right_deleted_count) = meta.decode_sorted_list_extra();
         let full_key = encode_data_key_sorted_list_item(meta.id, score, sequence);
@@ -475,7 +477,7 @@ impl Database {
     }
 
     pub fn sorted_list_left_pop(
-        &mut self,
+        &self,
         key: &str,
         max_score: Option<&[u8]>,
     ) -> Result<Option<(Box<[u8]>, Box<[u8]>)>> {
@@ -524,7 +526,7 @@ impl Database {
     }
 
     pub fn sorted_list_right_pop(
-        &mut self,
+        &self,
         key: &str,
         min_score: Option<&[u8]>,
     ) -> Result<Option<(Box<[u8]>, Box<[u8]>)>> {
@@ -572,7 +574,7 @@ impl Database {
         Ok(ret)
     }
 
-    pub fn sorted_list_for_each<F>(&mut self, key: &str, mut f: F) -> Result<u64>
+    pub fn sorted_list_for_each<F>(&self, key: &str, mut f: F) -> Result<u64>
     where
         F: FnMut((Box<[u8]>, Box<[u8]>)) -> bool,
     {
@@ -582,7 +584,7 @@ impl Database {
         })
     }
 
-    pub fn sorted_list_items(&mut self, key: &str) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+    pub fn sorted_list_items(&self, key: &str) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.sorted_list_for_each(key, |item| {

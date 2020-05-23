@@ -7,7 +7,7 @@ pub mod common;
 fn test_get_or_save_meta() {
     let path = get_random_database_path();
     {
-        let mut db = open_database_with_path(&path);
+        let db = open_database_with_path(&path);
         let m1 = db.get_or_create_meta("aaa", KeyType::Map).unwrap();
         assert_eq!(1, m1.id);
         let m2 = db.get_or_create_meta("bbb", KeyType::List).unwrap();
@@ -21,7 +21,7 @@ fn test_get_or_save_meta() {
         dump_database_meta(&db);
     }
     {
-        let mut db = open_database_with_path(&path);
+        let db = open_database_with_path(&path);
         dump_database_meta(&db);
 
         let m1 = db.get_or_create_meta("aaa", KeyType::Map).unwrap();
@@ -45,7 +45,7 @@ fn test_get_or_save_meta() {
 fn test_map() {
     let path = get_random_database_path();
     {
-        let mut db = open_database_with_path(&path);
+        let db = open_database_with_path(&path);
         let key = "hello";
 
         assert_eq!(0, db.map_count(key).unwrap());
@@ -85,7 +85,8 @@ fn test_map() {
         db.for_each_key(|_, _| {
             counter += 1;
             true
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(0, counter);
     }
 }
@@ -94,7 +95,7 @@ fn test_map() {
 fn test_set() {
     let path = get_random_database_path();
     {
-        let mut db = open_database_with_path(&path);
+        let db = open_database_with_path(&path);
         let key = "hello";
 
         assert_eq!(false, db.set_is_member(key, "aaa".as_bytes()).unwrap());
@@ -128,7 +129,7 @@ fn test_set() {
 fn test_list() {
     let path = get_random_database_path();
     {
-        let mut db = open_database_with_path(&path);
+        let db = open_database_with_path(&path);
         let key = "hello";
 
         assert_eq!(0, db.list_count(key).unwrap());
@@ -221,7 +222,7 @@ fn test_list() {
 fn test_sorted_list() {
     let path = get_random_database_path();
     {
-        let mut db = open_database_with_path(&path);
+        let db = open_database_with_path(&path);
         let key = "hello";
 
         assert_eq!(0, db.sorted_list_count(key).unwrap());
@@ -337,7 +338,7 @@ fn test_sorted_list() {
 #[test]
 fn test_delete_all() {
     let path = get_random_database_path();
-    let mut db = open_database_with_path(&path);
+    let db = open_database_with_path(&path);
     let count = 10;
     let key1 = "hello";
     let key2 = "world";
