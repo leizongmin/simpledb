@@ -1,4 +1,4 @@
-use cedar::encoding::{compare_score_bytes, get_next_upper_bound};
+use simpledb::encoding::{compare_score_bytes, get_next_upper_bound};
 
 #[test]
 fn test_compare_score_bytes() {

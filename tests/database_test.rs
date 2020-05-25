@@ -1,5 +1,5 @@
-use cedar::encoding::{get_score_bytes, get_score_from_bytes, KeyType};
 use common::*;
+use simpledb::encoding::{get_score_bytes, get_score_from_bytes, KeyType};
 
 pub mod common;
 

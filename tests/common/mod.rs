@@ -3,13 +3,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::Rng;
 
-use cedar::Database;
+use simpledb::Database;
 
 #[allow(dead_code)]
 pub fn get_random_database_path() -> String {
     let r: i32 = rand::thread_rng().gen();
     let path = temp_dir().as_path().join(format!(
-        "test-cedar-rs-{}-{}",
+        "test-simpledb-rs-{}-{}",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()

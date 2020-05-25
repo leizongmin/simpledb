@@ -1,4 +1,4 @@
-use cedar::encoding::get_score_bytes;
+use simpledb::encoding::get_score_bytes;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -28,7 +28,7 @@ fn test_multi_threading() {
 }
 
 fn test_map() {
-    let mut db = open_database!();
+    let db = open_database!();
     let key = "hello_map";
     let value = "hello, world".as_bytes();
     let count = 10_0000;
@@ -57,7 +57,7 @@ fn test_map() {
 }
 
 fn test_set() {
-    let mut db = open_database!();
+    let db = open_database!();
     let key = "hello_set";
     let count = 10_0000;
     let values: Vec<String> = (0..count).map(|i| format!("field_{}", i)).collect();
@@ -85,7 +85,7 @@ fn test_set() {
 }
 
 fn test_list() {
-    let mut db = open_database!();
+    let db = open_database!();
     let key = "hello_list";
     let count = 10_0000;
     let values: Vec<String> = (0..count).map(|i| format!("field_{}", i)).collect();
@@ -123,7 +123,7 @@ fn test_list() {
 }
 
 fn test_sorted_list() {
-    let mut db = open_database!();
+    let db = open_database!();
     let key = "hello_sorted_list";
     let count = 1_0000;
     let items: Vec<(Vec<u8>, String)> = (0..count)
