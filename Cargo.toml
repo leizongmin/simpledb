@@ -6,7 +6,6 @@ edition = "2018"
 description = "NoSQL embedded database on top of RocksDB"
 keywords = ["rocksdb", "nosql"]
 license = "MIT"
-license-file = "LICENSE"
 repository = "https://github.com/leizongmin/simpledb"
 homepage = "https://github.com/leizongmin/simpledb"
 
