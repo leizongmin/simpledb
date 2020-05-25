@@ -8,7 +8,7 @@ NoSQL embedded database on top of RocksDB.
 
 ## Usage
 
-Add this to your `cargo.toml`:
+Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -22,7 +22,7 @@ use simpledb::Database;
 
 fn main() {
     let db = Database::open("path").unwrap();
-    db.list_left_push(key, "a".as_bytes()).unwrap()
+    db.list_left_push("key".as_bytes(), "value".as_bytes()).unwrap()
 }
 ```
 
