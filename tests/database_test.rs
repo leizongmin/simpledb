@@ -88,6 +88,28 @@ fn test_map() {
         })
         .unwrap();
         assert_eq!(0, counter);
+
+        db.map_put(key, "xx11", "1".as_bytes()).unwrap();
+        db.map_put(key, "xx12", "2".as_bytes()).unwrap();
+        db.map_put(key, "xx13", "3".as_bytes()).unwrap();
+        db.map_put(key, "yy11", "4".as_bytes()).unwrap();
+        db.map_put(key, "yy12", "5".as_bytes()).unwrap();
+        db.map_put(key, "yy13", "6".as_bytes()).unwrap();
+        db.map_put(key, "zz11", "7".as_bytes()).unwrap();
+        db.map_put(key, "zz12", "8".as_bytes()).unwrap();
+        db.map_put(key, "zz13", "9".as_bytes()).unwrap();
+        let vec = db.map_items_with_prefix(key, "xx").unwrap();
+        println!("{:?}", vec);
+        assert_eq!(3, vec.len());
+        assert_eq!("xx11", vec[0].0.to_string());
+        assert_eq!("xx12", vec[1].0.to_string());
+        assert_eq!("xx13", vec[2].0.to_string());
+        let vec = db.map_items_with_prefix(key, "yy").unwrap();
+        println!("{:?}", vec);
+        assert_eq!(3, vec.len());
+        assert_eq!("yy11", vec[0].0.to_string());
+        assert_eq!("yy12", vec[1].0.to_string());
+        assert_eq!("yy13", vec[2].0.to_string());
     }
 }
 

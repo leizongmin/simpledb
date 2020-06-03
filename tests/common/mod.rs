@@ -46,7 +46,7 @@ pub fn dump_database_meta(db: &Database) {
 #[allow(dead_code)]
 pub fn dump_database_data(db: &Database, key: &str) {
     println!("dump_database_data:");
-    db.for_each_data(key, |k, m| {
+    db.for_each_data(key, None, |k, m| {
         println!("key: {:?}\t value: {:?}", k, m);
         true
     })

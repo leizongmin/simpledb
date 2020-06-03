@@ -9,6 +9,7 @@ use rocksdb::{
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
 use super::encoding::*;
+use bytes::{BufMut, BytesMut};
 
 /// Database instance.
 pub struct Database {
@@ -199,7 +200,7 @@ impl Database {
         }
     }
 
-    pub fn for_each_data<F>(&self, key: &str, mut f: F) -> Result<u64>
+    pub fn for_each_data<F>(&self, key: &str, prefix: Option<&str>, mut f: F) -> Result<u64>
     where
         F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
     {
@@ -208,7 +209,18 @@ impl Database {
             Some(meta) => {
                 if meta.count > 0 {
                     let mut counter = 0;
-                    self.prefix_iterator(encode_data_key(meta.id).as_ref(), |k, v| {
+                    let k = encode_data_key(meta.id);
+                    let k = match prefix {
+                        None => k,
+                        Some(prefix) => {
+                            let p = prefix.as_bytes();
+                            let mut buf = BytesMut::with_capacity(k.len() + p.len());
+                            buf.put_slice(k.as_ref());
+                            buf.put_slice(p);
+                            buf
+                        }
+                    };
+                    self.prefix_iterator(k.as_ref(), |k, v| {
                         counter += 1;
                         f(k, v)
                     });
@@ -234,7 +246,7 @@ impl Database {
         let mut deletes_count = 0;
         if let Some(meta) = meta {
             let mut has_error = None;
-            self.for_each_data(key, |k, _| {
+            self.for_each_data(key, None, |k, _| {
                 deletes_count += 1;
                 match self.rocksdb.delete(k) {
                     Ok(_) => true,
@@ -298,11 +310,13 @@ impl Database {
         F: FnMut(&str, Box<[u8]>) -> bool,
     {
         let mut has_error = None;
-        let count = self.for_each_data(key, |k, v| match decode_data_key_map_item(k.as_ref()) {
-            Ok(k) => f(&k, v),
-            Err(err) => {
-                has_error = Some(err);
-                false
+        let count = self.for_each_data(key, None, |k, v| {
+            match decode_data_key_map_item(k.as_ref()) {
+                Ok(k) => f(&k, v),
+                Err(err) => {
+                    has_error = Some(err);
+                    false
+                }
             }
         })?;
         match has_error {
@@ -315,6 +329,40 @@ impl Database {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.map_for_each(key, |f, v| {
+            vec.push((String::from(f), v));
+            true
+        })?;
+        Ok(vec)
+    }
+
+    pub fn map_for_each_with_prefix<F>(&self, key: &str, prefix: &str, mut f: F) -> Result<u64>
+    where
+        F: FnMut(&str, Box<[u8]>) -> bool,
+    {
+        let mut has_error = None;
+        let count =
+            self.for_each_data(key, Some(prefix), |k, v| {
+                match decode_data_key_map_item(k.as_ref()) {
+                    Ok(k) => f(&k, v),
+                    Err(err) => {
+                        has_error = Some(err);
+                        false
+                    }
+                }
+            })?;
+        match has_error {
+            None => Ok(count),
+            Some(err) => Err(err.into()),
+        }
+    }
+
+    pub fn map_items_with_prefix(
+        &self,
+        key: &str,
+        prefix: &str,
+    ) -> Result<Vec<(String, Box<[u8]>)>> {
+        let mut vec = Vec::new();
+        self.map_for_each_with_prefix(key, prefix, |f, v| {
             vec.push((String::from(f), v));
             true
         })?;
@@ -371,7 +419,7 @@ impl Database {
     where
         F: FnMut(Box<[u8]>) -> bool,
     {
-        self.for_each_data(key, |k, _| {
+        self.for_each_data(key, None, |k, _| {
             let value = decode_data_key_set_item(k.as_ref());
             f(Box::from(value))
         })
@@ -457,7 +505,7 @@ impl Database {
     where
         F: FnMut(Box<[u8]>) -> bool,
     {
-        self.for_each_data(key, |_, v| f(Box::from(v)))
+        self.for_each_data(key, None, |_, v| f(Box::from(v)))
     }
 
     pub fn list_items(&self, key: &str) -> Result<Vec<Box<[u8]>>> {
@@ -587,7 +635,7 @@ impl Database {
     where
         F: FnMut((Box<[u8]>, Box<[u8]>)) -> bool,
     {
-        self.for_each_data(key, |k, v| {
+        self.for_each_data(key, None, |k, v| {
             let score = decode_data_key_sorted_list_item(k.as_ref());
             f((Box::from(score), Box::from(v)))
         })
