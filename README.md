@@ -17,15 +17,17 @@ Add this to your `Cargo.toml`:
 simpledb = "0.1"
 ```
 
-Usage:
+Example:
 
-```
+```rust
 use simpledb::Database;
 
-// open a database
-let db = Database::open("./target/path/to/database").unwrap();
-// left push a value to a list
-db.list_left_push("key", "value".as_bytes()).unwrap();
+fn main() {
+    // open a database
+    let db = Database::open("./target/path/to/database").unwrap();
+    // left push a value to a list
+    db.list_left_push("key", "value".as_bytes()).unwrap();
+}
 ```
 
 Supported data type:
