@@ -6,6 +6,8 @@
 
 NoSQL embedded database on top of RocksDB.
 
+Documents: https://docs.rs/simpledb
+
 ## Usage
 
 Add this to your `Cargo.toml`:
@@ -15,16 +17,29 @@ Add this to your `Cargo.toml`:
 simpledb = "0.1"
 ```
 
-example:
+Usage:
 
-```rust
+```
 use simpledb::Database;
 
-fn main() {
-    let db = Database::open("path").unwrap();
-    db.list_left_push("key", "value".as_bytes()).unwrap()
-}
+// open a database
+let db = Database::open("./target/path/to/database").unwrap();
+// left push a value to a list
+db.list_left_push("key", "value".as_bytes()).unwrap();
 ```
+
+Supported data type:
+- **map**: Store field/value pairs, includes the following operations with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
+- **set**: Store unique values, includes the following operations with `set_` prefix: `add`, `is_member`, `delete`, `count`, `for_each`, `items`.
+- **list**: Store ordered values, includes the following operations with `list_` prefix: `left_push`, `left_pop`, `right_push`, `right_pop`, `count`, `for_each`, `items`.
+- **sorted list**: Store sorted score/value pairs, includes the following operations with `sorted_list_` prefix: `add`, `left_pop`, `right_pop`, `count`, `for_each`, `items`.
+
+
+## Changelog
+
+- v0.1.1:
+  - feat: add `map_for_each_with_prefix` & `map_items_with_prefix` operations.
+
 
 ## License
 
