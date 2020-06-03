@@ -22,7 +22,7 @@ use simpledb::Database;
 
 fn main() {
     let db = Database::open("path").unwrap();
-    db.list_left_push("key".as_bytes(), "value".as_bytes()).unwrap()
+    db.list_left_push("key", "value".as_bytes()).unwrap()
 }
 ```
 

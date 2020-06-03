@@ -1,14 +1,19 @@
 use bytes::{Buf, BufMut, BytesMut};
 use std::string::FromUtf8Error;
 
+/// Key prefix for meta data.
 pub static PREFIX_META: &'static [u8] = b"m";
+/// Key prefix for row data.
 pub static PREFIX_DATA: &'static [u8] = b"d";
+/// Fill data for empty row.
 pub static FILL_EMPTY_DATA: &'static [u8] = b"";
 
+/// Ensure a key name has a specific prefix.
 pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
     prefix.iter().zip(key).take_while(|(x, y)| x == y).count() == prefix.len()
 }
 
+/// Encode a meta key.
 pub fn encode_meta_key(key: &str) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
     buf.put_slice(PREFIX_META);
@@ -16,10 +21,12 @@ pub fn encode_meta_key(key: &str) -> BytesMut {
     buf
 }
 
+/// Decode meta key.
 pub fn decode_meta_key(key: &[u8]) -> Result<String, FromUtf8Error> {
     String::from_utf8(key[1..].to_vec())
 }
 
+/// Encode data key
 pub fn encode_data_key(key_id: u64) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
     buf.put_slice(PREFIX_DATA);
@@ -27,6 +34,7 @@ pub fn encode_data_key(key_id: u64) -> BytesMut {
     buf
 }
 
+/// Encode data key of `map` item.
 pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
     let field = field.as_bytes();
     let mut buf = BytesMut::with_capacity(9 + field.len());
@@ -36,10 +44,12 @@ pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
     buf
 }
 
+/// Decode data key of `map` item.
 pub fn decode_data_key_map_item(key: &[u8]) -> Result<String, FromUtf8Error> {
     String::from_utf8(key[9..].to_vec())
 }
 
+/// Encode data key of `set` item.
 pub fn encode_data_key_set_item(key_id: u64, value: &[u8]) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9 + value.len());
     buf.put_slice(PREFIX_DATA);
@@ -48,10 +58,12 @@ pub fn encode_data_key_set_item(key_id: u64, value: &[u8]) -> BytesMut {
     buf
 }
 
+/// Decode data key of `set` item.
 pub fn decode_data_key_set_item(key: &[u8]) -> &[u8] {
     key[9..].as_ref()
 }
 
+/// Encode data key of `list` item.
 pub fn encode_data_key_list_item(key_id: u64, position: i64) -> BytesMut {
     let mut buf = BytesMut::with_capacity(18);
     buf.put_slice(PREFIX_DATA);
@@ -65,6 +77,7 @@ pub fn encode_data_key_list_item(key_id: u64, position: i64) -> BytesMut {
     buf
 }
 
+/// Encode data key of `sorted list` item.
 pub fn encode_data_key_sorted_list_item(key_id: u64, score: &[u8], sequence: u64) -> BytesMut {
     let mut buf = BytesMut::with_capacity(17 + score.len());
     buf.put_slice(PREFIX_DATA);
@@ -74,10 +87,13 @@ pub fn encode_data_key_sorted_list_item(key_id: u64, score: &[u8], sequence: u64
     buf
 }
 
+/// Decode data key of `sorted list` item.
 pub fn decode_data_key_sorted_list_item(key: &[u8]) -> &[u8] {
     key[9..key.len() - 8].as_ref()
 }
 
+/// Compare bytes of two scores. It the first item is greater than the second score, returns 1;
+/// If the first item is less than the second item, returns -1; Or else returns 0.
 pub fn compare_score_bytes(a: &[u8], b: &[u8]) -> i32 {
     if a > b {
         1
@@ -247,6 +263,7 @@ pub fn get_next_upper_bound(bound: &[u8]) -> Vec<u8> {
     next.iter().map(|v| *v as u8).collect()
 }
 
+/// Supported data type of this database.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum KeyType {
     Map,
@@ -276,15 +293,21 @@ impl KeyType {
     }
 }
 
+/// Meta data struct.
 #[derive(Debug, Clone)]
 pub struct KeyMeta {
+    /// Auto-increment key ID.
     pub id: u64,
+    /// Data type.
     pub key_type: KeyType,
+    /// Total items count.
     pub count: u64,
+    /// Extra data.
     pub extra: Option<Vec<u8>>,
 }
 
 impl KeyMeta {
+    /// Create a new `KeyMeta` instance.
     pub fn new(id: u64, key_type: KeyType) -> KeyMeta {
         KeyMeta {
             id,
@@ -294,6 +317,7 @@ impl KeyMeta {
         }
     }
 
+    /// Decode `KeyMeta` from bytes.
     pub fn from_bytes(input: &[u8]) -> KeyMeta {
         let mut buf = input;
         let id = buf.get_u64();
@@ -312,6 +336,7 @@ impl KeyMeta {
         }
     }
 
+    /// Get bytes.
     pub fn get_bytes(&self) -> BytesMut {
         let mut buf = BytesMut::with_capacity(16);
         buf.put_u64(self.id);
@@ -323,6 +348,7 @@ impl KeyMeta {
         buf
     }
 
+    /// Decode extra data for `list` data type.
     pub fn decode_list_extra(&self) -> (i64, i64) {
         if let Some(b) = &self.extra {
             let mut buf = b.as_slice();
@@ -333,6 +359,8 @@ impl KeyMeta {
             (0, 1)
         }
     }
+
+    /// Encode extra data for `list` data type.
     pub fn encode_list_extra(&mut self, left: i64, right: i64) {
         let mut buf = BytesMut::with_capacity(16);
         buf.put_i64(left);
@@ -340,6 +368,7 @@ impl KeyMeta {
         self.extra = Some(buf.to_vec());
     }
 
+    /// Decode extra data for `sorted list` data type.
     pub fn decode_sorted_list_extra(&self) -> (u64, u32, u32) {
         if let Some(b) = &self.extra {
             let mut buf = b.as_slice();
@@ -349,6 +378,7 @@ impl KeyMeta {
         }
     }
 
+    /// Encode extra data for `sorted list` data type.
     pub fn encode_sorted_list_extra(
         &mut self,
         sequence: u64,

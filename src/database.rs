@@ -10,6 +10,7 @@ use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
 use super::encoding::*;
 
+/// Database instance.
 pub struct Database {
     pub path: String,
     pub rocksdb: DB,
@@ -17,9 +18,14 @@ pub struct Database {
     next_key_id: Cell<u64>,
 }
 
+/// Options for open a database.
 pub struct Options {
+    /// RocksDB options.
     pub rocksdb_options: RocksDBOptions,
+    /// For `sorted list` data type, run RocksDB `compact` operation when every specific deletes count.
+    /// This is a performance optimization strategy.
     pub sorted_list_compact_deletes_count: u32,
+    /// Auto delete the key meta when items count is 0, the key ID will be different for the next time when reuse the same key.
     pub delete_meta_when_empty: bool,
 }
 
@@ -67,10 +73,12 @@ impl From<RocksDBError> for Error {
 }
 
 impl Database {
+    /// Open database with default options.
     pub fn open(path: &str) -> Result<Database> {
         Database::open_with_options(path, Options::default())
     }
 
+    /// Open database with specific options.
     pub fn open_with_options(path: &str, options: Options) -> Result<Database> {
         let db = DB::open(&options.rocksdb_options, path)?;
         let mut db = Database {
@@ -83,6 +91,7 @@ impl Database {
         Ok(db)
     }
 
+    /// Destroy database.
     pub fn destroy(path: &str) -> Result<()> {
         Ok(DB::destroy(&RocksDBOptions::default(), path)?)
     }
