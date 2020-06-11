@@ -39,8 +39,11 @@ Supported data type:
 
 ## Changelog
 
-- v0.1.1:
-  - feat: add `map_for_each_with_prefix` & `map_items_with_prefix` operations.
+#### v0.1.2
+- feat: add `for_each_key_with_prefix` & `keys` & `keys_with_prefix` operations.
+
+#### v0.1.1:
+- feat: add `map_for_each_with_prefix` & `map_items_with_prefix` operations.
 
 
 ## License
