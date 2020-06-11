@@ -42,6 +42,51 @@ fn test_get_or_save_meta() {
 }
 
 #[test]
+fn test_for_each_key() {
+    let path = get_random_database_path();
+    let db = open_database_with_path(&path);
+
+    db.map_put("a111", "a", "123".as_bytes()).unwrap();
+    db.map_put("b111", "a", "123".as_bytes()).unwrap();
+    db.list_left_push("a222", "123".as_bytes()).unwrap();
+    db.list_left_push("b222", "123".as_bytes()).unwrap();
+    db.set_add("c111", "aaa".as_bytes()).unwrap();
+    db.set_add("c222", "aaa".as_bytes()).unwrap();
+
+    let keys: Vec<String> = db.keys().unwrap().iter().map(|(k, _)| k.clone()).collect();
+    assert_eq!(
+        keys,
+        vec![
+            "a111".to_string(),
+            "a222".to_string(),
+            "b111".to_string(),
+            "b222".to_string(),
+            "c111".to_string(),
+            "c222".to_string()
+        ]
+    );
+
+    let keys: Vec<String> = db
+        .keys_with_prefix("a")
+        .unwrap()
+        .iter()
+        .map(|(k, _)| k.clone())
+        .collect();
+    assert_eq!(keys, vec!["a111".to_string(), "a222".to_string(),]);
+
+    let keys: Vec<String> = db
+        .keys_with_prefix("b")
+        .unwrap()
+        .iter()
+        .map(|(k, _)| k.clone())
+        .collect();
+    assert_eq!(keys, vec!["b111".to_string(), "b222".to_string(),]);
+
+    let keys = db.keys_with_prefix("abc").unwrap();
+    assert_eq!(keys.len(), 0);
+}
+
+#[test]
 fn test_map() {
     let path = get_random_database_path();
     {

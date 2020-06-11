@@ -200,6 +200,53 @@ impl Database {
         }
     }
 
+    pub fn for_each_key_with_prefix<F>(&self, prefix: &str, mut f: F) -> Result<usize>
+    where
+        F: FnMut(&str, &KeyMeta) -> bool,
+    {
+        let mut counter: usize = 0;
+        let mut has_error = None;
+        let k = {
+            let p = prefix.as_bytes();
+            let mut buf = BytesMut::with_capacity(PREFIX_META.len() + p.len());
+            buf.put_slice(PREFIX_META);
+            buf.put_slice(p);
+            buf
+        };
+        self.prefix_iterator(k.as_ref(), |k, v| {
+            counter = counter + 1;
+            match decode_meta_key(k.as_ref()) {
+                Ok(key) => f(key.as_str(), &KeyMeta::from_bytes(v.as_ref())),
+                Err(err) => {
+                    has_error = Some(err);
+                    false
+                }
+            }
+        });
+        match has_error {
+            None => Ok(counter),
+            Some(err) => Err(err.into()),
+        }
+    }
+
+    pub fn keys(&self) -> Result<Vec<(String, KeyMeta)>> {
+        let mut vec = Vec::new();
+        self.for_each_key(|k, meta| {
+            vec.push((k.to_string(), meta.clone()));
+            true
+        })?;
+        Ok(vec)
+    }
+
+    pub fn keys_with_prefix(&self, prefix: &str) -> Result<Vec<(String, KeyMeta)>> {
+        let mut vec = Vec::new();
+        self.for_each_key_with_prefix(prefix, |k, meta| {
+            vec.push((k.to_string(), meta.clone()));
+            true
+        })?;
+        Ok(vec)
+    }
+
     pub fn for_each_data<F>(&self, key: &str, prefix: Option<&str>, mut f: F) -> Result<u64>
     where
         F: FnMut(Box<[u8]>, Box<[u8]>) -> bool,
