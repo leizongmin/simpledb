@@ -30,7 +30,7 @@ fn main() {
 }
 ```
 
-Supported data type:
+## Supported Data Type
 - **map**: Store field/value pairs, includes the following operations with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
 - **set**: Store unique values, includes the following operations with `set_` prefix: `add`, `is_member`, `delete`, `count`, `for_each`, `items`.
 - **list**: Store ordered values, includes the following operations with `list_` prefix: `left_push`, `left_pop`, `right_push`, `right_pop`, `count`, `for_each`, `items`.
