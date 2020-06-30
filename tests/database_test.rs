@@ -403,6 +403,108 @@ fn test_sorted_list() {
 }
 
 #[test]
+fn test_sorted_set() {
+    let path = get_random_database_path();
+    {
+        let db = open_database_with_path(&path);
+        let key = "hello";
+
+        assert_eq!(
+            false,
+            db.sorted_set_is_member(key, "aaa".as_bytes()).unwrap()
+        );
+        assert_eq!(0, db.set_count(key).unwrap());
+        assert_eq!(
+            1,
+            db.sorted_set_add(key, get_score_bytes(120).as_slice(), "aaa".as_bytes())
+                .unwrap()
+        );
+        assert_eq!(1, db.set_count(key).unwrap());
+        assert_eq!(
+            true,
+            db.sorted_set_is_member(key, "aaa".as_bytes()).unwrap()
+        );
+
+        assert_eq!(
+            2,
+            db.sorted_set_add(key, get_score_bytes(110).as_slice(), "bbb".as_bytes())
+                .unwrap()
+        );
+        assert_eq!(2, db.set_count(key).unwrap());
+        assert_eq!(
+            3,
+            db.sorted_set_add(key, get_score_bytes(130).as_slice(), "ccc".as_bytes())
+                .unwrap()
+        );
+        assert_eq!(3, db.set_count(key).unwrap());
+
+        let parse_results = |vec: Vec<(Box<[u8]>, Box<[u8]>)>| {
+            let values: Vec<String> = vec
+                .iter()
+                .map(|(_, v)| String::from_utf8(v.to_vec()).unwrap())
+                .collect();
+            let scores: Vec<i32> = vec
+                .iter()
+                .map(|(s, _)| get_score_from_bytes(s.as_ref()))
+                .collect();
+            (scores, values)
+        };
+
+        let (scores, values) = parse_results(db.sorted_set_items(key).unwrap());
+        assert_eq!(
+            values,
+            vec!["bbb".to_string(), "aaa".to_string(), "ccc".to_string()]
+        );
+        assert_eq!(scores, vec![110, 120, 130]);
+
+        let (scores, values) = parse_results(db.sorted_set_left(key, None, 2).unwrap());
+        assert_eq!(values, vec!["bbb".to_string(), "aaa".to_string()]);
+        assert_eq!(scores, vec![110, 120]);
+
+        let (scores, values) = parse_results(
+            db.sorted_set_left(key, Some(get_score_bytes(125).as_slice()), 2)
+                .unwrap(),
+        );
+        assert_eq!(values, vec!["bbb".to_string(), "aaa".to_string()]);
+        assert_eq!(scores, vec![110, 120]);
+
+        let (scores, values) = parse_results(
+            db.sorted_set_left(key, Some(get_score_bytes(125).as_slice()), 1)
+                .unwrap(),
+        );
+        assert_eq!(values, vec!["bbb".to_string()]);
+        assert_eq!(scores, vec![110]);
+
+        dump_database_meta(&db);
+        dump_database_data(&db, key);
+
+        let (scores, values) = parse_results(db.sorted_set_right(key, None, 10).unwrap());
+        assert_eq!(
+            values,
+            vec!["ccc".to_string(), "aaa".to_string(), "bbb".to_string()]
+        );
+        assert_eq!(scores, vec![130, 120, 110]);
+
+        let (scores, values) = parse_results(
+            db.sorted_set_right(key, Some(get_score_bytes(115).as_slice()), 10)
+                .unwrap(),
+        );
+        assert_eq!(values, vec!["ccc".to_string(), "aaa".to_string()]);
+        assert_eq!(scores, vec![130, 120]);
+
+        assert_eq!(false, db.sorted_set_delete(key, "ddd".as_bytes()).unwrap());
+        assert_eq!(true, db.sorted_set_delete(key, "aaa".as_bytes()).unwrap());
+        assert_eq!(true, db.sorted_set_delete(key, "bbb".as_bytes()).unwrap());
+        assert_eq!(1, db.set_count(key).unwrap());
+        assert_eq!(true, db.sorted_set_delete(key, "ccc".as_bytes()).unwrap());
+        assert_eq!(0, db.set_count(key).unwrap());
+
+        dump_database_meta(&db);
+        dump_database_data(&db, key);
+    }
+}
+
+#[test]
 fn test_delete_all() {
     let path = get_random_database_path();
     let db = open_database_with_path(&path);

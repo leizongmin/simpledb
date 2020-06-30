@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::fmt::Formatter;
 use std::string::FromUtf8Error;
 
+use bytes::{BufMut, BytesMut};
 use rocksdb::{
     Direction, Error as RocksDBError, IteratorMode, Options as RocksDBOptions, ReadOptions, DB,
 };
@@ -9,7 +10,6 @@ use rocksdb::{
 use crate::encoding::{encode_data_key, has_prefix, KeyType};
 
 use super::encoding::*;
-use bytes::{BufMut, BytesMut};
 
 /// Database instance.
 pub struct Database {
@@ -48,6 +48,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     FromUtf8Error(FromUtf8Error),
     RocksDBError(RocksDBError),
+    Message(String),
 }
 
 impl std::fmt::Display for Error {
@@ -55,6 +56,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::FromUtf8Error(err) => write!(f, "FromUtf8Error: {}", err),
             Error::RocksDBError(err) => write!(f, "RocksDBError: {}", err),
+            Error::Message(err) => write!(f, "Error: {}", err),
         }
     }
 }
@@ -256,7 +258,10 @@ impl Database {
             Some(meta) => {
                 if meta.count > 0 {
                     let mut counter = 0;
-                    let k = encode_data_key(meta.id);
+                    let k = match meta.key_type {
+                        KeyType::SortedSet => encode_data_key_sorted_set_prefix(meta.id),
+                        _ => encode_data_key(meta.id),
+                    };
                     let k = match prefix {
                         None => k,
                         Some(prefix) => {
@@ -696,5 +701,181 @@ impl Database {
             true
         })?;
         Ok(vec)
+    }
+
+    pub fn sorted_set_count(&self, key: &str) -> Result<u64> {
+        self.get_count(key)
+    }
+
+    pub fn sorted_set_for_each<F>(&self, key: &str, mut f: F) -> Result<u64>
+    where
+        F: FnMut((Box<[u8]>, Box<[u8]>)) -> bool,
+    {
+        let score_len = self
+            .get_meta(key)?
+            .map(|m| m.decode_sorted_set_extra().1)
+            .unwrap_or(0);
+        self.for_each_data(key, None, |k, _| {
+            f(decode_data_key_sorted_set_item_with_score(
+                k.as_ref(),
+                score_len,
+            ))
+        })
+    }
+
+    pub fn sorted_set_items(&self, key: &str) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+        let count = self.get_count(key)?;
+        let mut vec = Vec::with_capacity(count as u64 as usize);
+        self.sorted_set_for_each(key, |v| {
+            vec.push(v);
+            true
+        })?;
+        Ok(vec)
+    }
+
+    pub fn sorted_set_add(&self, key: &str, score: &[u8], value: &[u8]) -> Result<u64> {
+        let mut meta = self.get_or_create_meta(key, KeyType::SortedSet)?;
+        let (deleted_count, score_len) = meta.decode_sorted_set_extra();
+        let full_key1 = encode_data_key_sorted_set_item_with_score(meta.id, score, value);
+        let full_key2 = encode_data_key_sorted_set_item_without_score(meta.id, value);
+        if score_len < 1 {
+            meta.encode_sorted_set_extra(deleted_count, score.len() as u8);
+        } else {
+            let actual_len = score.len() as u8;
+            if score_len != actual_len {
+                return Err(Error::Message(format!(
+                    "invalid score length, expected {} bytes but got {} bytes",
+                    score_len, actual_len
+                )));
+            }
+        }
+        meta.count += 1;
+        self.rocksdb.put(full_key1, FILL_EMPTY_DATA)?;
+        self.rocksdb.put(full_key2, score)?;
+        self.save_meta(key, &meta, false)?;
+        Ok(meta.count)
+    }
+
+    pub fn sorted_set_is_member(&self, key: &str, value: &[u8]) -> Result<bool> {
+        match self.get_meta(key)? {
+            None => Ok(false),
+            Some(meta) => {
+                let full_key = encode_data_key_sorted_set_item_without_score(meta.id, value);
+                match self.rocksdb.get(full_key)? {
+                    None => Ok(false),
+                    Some(_) => Ok(true),
+                }
+            }
+        }
+    }
+
+    pub fn sorted_set_delete(&self, key: &str, value: &[u8]) -> Result<bool> {
+        match self.get_meta(key)? {
+            None => Ok(false),
+            Some(mut meta) => {
+                let (deleted_count, score_len) = meta.decode_sorted_set_extra();
+                let full_key1 = encode_data_key_sorted_set_item_without_score(meta.id, value);
+                match self.rocksdb.get(full_key1.as_ref())? {
+                    None => Ok(false),
+                    Some(score) => {
+                        let score = score.as_ref();
+                        let full_key2 =
+                            encode_data_key_sorted_set_item_with_score(meta.id, score, value);
+                        self.rocksdb.delete(full_key2)?;
+                        self.rocksdb.delete(full_key1)?;
+                        meta.count -= 1;
+                        if deleted_count > 0
+                            && deleted_count % self.options.sorted_list_compact_deletes_count == 0
+                        {
+                            self.rocksdb.compact_range(
+                                Some(encode_data_key(meta.id).as_ref()),
+                                Some(encode_data_key(meta.id + 1).as_ref()),
+                            );
+                            meta.encode_sorted_set_extra(0, score_len);
+                        } else {
+                            meta.encode_sorted_set_extra(deleted_count + 1, score_len);
+                        }
+                        self.save_meta(key, &meta, true)?;
+                        Ok(true)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn sorted_set_left(
+        &self,
+        key: &str,
+        max_score: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+        match self.get_meta(key)? {
+            None => Ok(vec![]),
+            Some(meta) => {
+                let (_, score_len) = meta.decode_sorted_set_extra();
+                let mut list = vec![];
+                let prefix = encode_data_key_sorted_set_prefix(meta.id);
+                let mut opts = ReadOptions::default();
+                opts.set_prefix_same_as_start(true);
+                let iter = self
+                    .rocksdb
+                    .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
+                for (k, _) in iter {
+                    if !has_prefix(&prefix, k.as_ref()) {
+                        break;
+                    }
+                    let (score, value) =
+                        decode_data_key_sorted_set_item_with_score(k.as_ref(), score_len);
+                    if let Some(max_score) = max_score {
+                        if compare_score_bytes(score.as_ref(), max_score) > 0 {
+                            break;
+                        }
+                    }
+                    list.push((score, value));
+                    if list.len() >= limit {
+                        break;
+                    }
+                }
+                Ok(list)
+            }
+        }
+    }
+
+    pub fn sorted_set_right(
+        &self,
+        key: &str,
+        min_score: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+        match self.get_meta(key)? {
+            None => Ok(vec![]),
+            Some(meta) => {
+                let (_, score_len) = meta.decode_sorted_set_extra();
+                let mut list = vec![];
+                let prefix = encode_data_key_sorted_set_prefix(meta.id);
+                let next_prefix = encode_data_key_sorted_set_prefix(meta.id + 1);
+                let opts = ReadOptions::default();
+                let iter = self
+                    .rocksdb
+                    .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
+                for (k, _) in iter {
+                    if !has_prefix(&prefix, k.as_ref()) {
+                        break;
+                    }
+                    let (score, value) =
+                        decode_data_key_sorted_set_item_with_score(k.as_ref(), score_len);
+                    if let Some(min_score) = min_score {
+                        if compare_score_bytes(score.as_ref(), min_score) < 0 {
+                            break;
+                        }
+                    }
+                    list.push((score, value));
+                    if list.len() >= limit {
+                        break;
+                    }
+                }
+                Ok(list)
+            }
+        }
     }
 }

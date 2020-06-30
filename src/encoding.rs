@@ -1,5 +1,6 @@
-use bytes::{Buf, BufMut, BytesMut};
 use std::string::FromUtf8Error;
+
+use bytes::{Buf, BufMut, BytesMut};
 
 /// Key prefix for meta data.
 pub static PREFIX_META: &'static [u8] = b"m";
@@ -90,6 +91,51 @@ pub fn encode_data_key_sorted_list_item(key_id: u64, score: &[u8], sequence: u64
 /// Decode data key of `sorted list` item.
 pub fn decode_data_key_sorted_list_item(key: &[u8]) -> &[u8] {
     key[9..key.len() - 8].as_ref()
+}
+
+/// Encode data key prefix of `sorted set` item
+pub fn encode_data_key_sorted_set_prefix(key_id: u64) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(10);
+    buf.put_slice(PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf.put_u8(1);
+    buf
+}
+
+/// Encode data key of `sorted set` item
+pub fn encode_data_key_sorted_set_item_with_score(
+    key_id: u64,
+    score: &[u8],
+    value: &[u8],
+) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(10 + score.len() + value.len());
+    buf.put_slice(PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf.put_u8(1);
+    buf.put_slice(score);
+    buf.put_slice(value);
+    buf
+}
+
+/// Encode data key of `sorted set` item
+pub fn encode_data_key_sorted_set_item_without_score(key_id: u64, value: &[u8]) -> BytesMut {
+    let mut buf = BytesMut::with_capacity(10 + value.len());
+    buf.put_slice(PREFIX_DATA);
+    buf.put_u64(key_id);
+    buf.put_u8(0);
+    buf.put_slice(value);
+    buf
+}
+
+/// Decode data key for `sorted set` item
+pub fn decode_data_key_sorted_set_item_with_score(
+    key: &[u8],
+    score_len: u8,
+) -> (Box<[u8]>, Box<[u8]>) {
+    let score_len = score_len as usize;
+    let score = &key[10..10 + score_len];
+    let value = &key[10 + score_len..];
+    (Box::from(score), Box::from(value))
 }
 
 /// Compare bytes of two scores. It the first item is greater than the second score, returns 1;
@@ -270,6 +316,7 @@ pub enum KeyType {
     List,
     SortedList,
     Set,
+    SortedSet,
 }
 
 impl KeyType {
@@ -279,6 +326,7 @@ impl KeyType {
             2 => Some(KeyType::List),
             3 => Some(KeyType::SortedList),
             4 => Some(KeyType::Set),
+            5 => Some(KeyType::SortedSet),
             _ => None,
         }
     }
@@ -289,6 +337,7 @@ impl KeyType {
             KeyType::List => 2,
             KeyType::SortedList => 3,
             KeyType::Set => 4,
+            KeyType::SortedSet => 5,
         }
     }
 }
@@ -369,6 +418,7 @@ impl KeyMeta {
     }
 
     /// Decode extra data for `sorted list` data type.
+    /// returns (sequence[u64], left_deleted_count[u32], right_deleted_count[u32])
     pub fn decode_sorted_list_extra(&self) -> (u64, u32, u32) {
         if let Some(b) = &self.extra {
             let mut buf = b.as_slice();
@@ -389,6 +439,25 @@ impl KeyMeta {
         buf.put_u64(sequence);
         buf.put_u32(left_deleted_count);
         buf.put_u32(right_deleted_count);
+        self.extra = Some(buf.to_vec())
+    }
+
+    /// Decode extra data for `sorted set` data type.
+    /// returns (deleted_count[u32], score_len[u8])
+    pub fn decode_sorted_set_extra(&self) -> (u32, u8) {
+        if let Some(b) = &self.extra {
+            let mut buf = b.as_slice();
+            (buf.get_u32(), buf.get_u8())
+        } else {
+            (0, 0)
+        }
+    }
+
+    /// Encode extra data for `sorted set` data type.
+    pub fn encode_sorted_set_extra(&mut self, deleted_count: u32, score_len: u8) {
+        let mut buf = BytesMut::with_capacity(12);
+        buf.put_u32(deleted_count);
+        buf.put_u8(score_len);
         self.extra = Some(buf.to_vec())
     }
 }

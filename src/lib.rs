@@ -12,11 +12,12 @@
 //! ```
 //!
 //! ## Supported Data Type
-//! - **map**: Store field/value pairs, includes the following operations with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
-//! - **set**: Store unique values, includes the following operations with `set_` prefix: `add`, `is_member`, `delete`, `count`, `for_each`, `items`.
-//! - **list**: Store ordered values, includes the following operations with `list_` prefix: `left_push`, `left_pop`, `right_push`, `right_pop`, `count`, `for_each`, `items`.
-//! - **sorted list**: Store sorted score/value pairs, includes the following operations with `sorted_list_` prefix: `add`, `left_pop`, `right_pop`, `count`, `for_each`, `items`.
-//!
+//! - **map**: store field/value pairs, includes the following operations with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
+//! - **set**: store unique values, includes the following operations with `set_` prefix: `add`, `is_member`, `delete`, `count`, `for_each`, `items`.
+//! - **list**: store ordered values, includes the following operations with `list_` prefix: `left_push`, `left_pop`, `right_push`, `right_pop`, `count`, `for_each`, `items`.
+//! - **sorted list**: store sorted score/value pairs, includes the following operations with `sorted_list_` prefix: `add`, `left_pop`, `right_pop`, `count`, `for_each`, `items`.
+//! - **sorted set**: store sorted score/value pairs, includes the following operations with `sorted_set_` prefix: `add`, `is_member`, `delete`, `left`, `right`, `for_each`, `items`.
+//! - Notes: the difference between `sorted list` and `sorted set` is `list` allow the same members, `set` does not allow the same members.
 
 mod database;
 
