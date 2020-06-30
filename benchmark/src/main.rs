@@ -12,6 +12,7 @@ fn main() {
     test_set();
     test_list();
     test_sorted_list();
+    test_sorted_set();
 }
 
 fn test_multi_threading() {
@@ -157,6 +158,49 @@ fn test_sorted_list() {
         for (score, _) in &items {
             db.sorted_list_right_pop(key, Some(score.as_slice()))
                 .unwrap();
+        }
+    });
+}
+
+fn test_sorted_set() {
+    let db = open_database!();
+    let key = "hello_sorted_set";
+    let count = 1_0000;
+    let items: Vec<(Vec<u8>, String)> = (0..count)
+        .map(|i| (get_score_bytes(i as i64), format!("field_{}", i)))
+        .collect();
+
+    common::benchmark_test_case("sorted_set_add", count, |_| {
+        for (score, value) in &items {
+            db.sorted_set_add(key, score.as_slice(), value.as_bytes())
+                .unwrap();
+        }
+    });
+    common::benchmark_test_case("sorted_set_is_member", count, |_| {
+        for (score, value) in &items {
+            db.sorted_set_is_member(key, value.as_bytes()).unwrap();
+        }
+    });
+    common::benchmark_test_case("sorted_set_count", count, |count| {
+        for _ in 0..count {
+            db.sorted_set_count(key).unwrap();
+        }
+    });
+    common::benchmark_test_case("sorted_set_left", count, |_| {
+        for (score, _) in &items {
+            db.sorted_set_left(key, Some(score.as_slice()), 100)
+                .unwrap();
+        }
+    });
+    common::benchmark_test_case("sorted_set_right", count, |_| {
+        for (score, _) in &items {
+            db.sorted_set_right(key, Some(score.as_slice()), 100)
+                .unwrap();
+        }
+    });
+    common::benchmark_test_case("sorted_set_delete", count, |_| {
+        for (score, value) in &items {
+            db.sorted_set_delete(key, value.as_bytes()).unwrap();
         }
     });
 }
