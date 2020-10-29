@@ -13,7 +13,7 @@ homepage = "https://github.com/leizongmin/simpledb"
 
 [dependencies]
 rocksdb = "0.15"
-bytes = "0.5"
+bytes = "0.6"
 
 [dev-dependencies]
 rand = "0.7"
