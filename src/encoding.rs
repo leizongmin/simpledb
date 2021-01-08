@@ -173,7 +173,7 @@ impl BytesComparableScore for i64 {
     where
         Self: Sized,
     {
-        b[1..].as_ref().to_bytes().get_i64()
+        b[1..].as_ref().get_i64()
     }
 }
 
@@ -193,7 +193,7 @@ impl BytesComparableScore for i32 {
     where
         Self: Sized,
     {
-        b[1..].as_ref().to_bytes().get_i32()
+        b[1..].as_ref().get_i32()
     }
 }
 
@@ -213,7 +213,7 @@ impl BytesComparableScore for f64 {
     where
         Self: Sized,
     {
-        b[1..].as_ref().to_bytes().get_f64()
+        b[1..].as_ref().get_f64()
     }
 }
 
@@ -233,7 +233,7 @@ impl BytesComparableScore for f32 {
     where
         Self: Sized,
     {
-        b[1..].as_ref().to_bytes().get_f32()
+        b[1..].as_ref().get_f32()
     }
 }
 
@@ -249,7 +249,7 @@ impl BytesComparableScore for u32 {
     where
         Self: Sized,
     {
-        b[1..].as_ref().to_bytes().get_u32()
+        b[1..].as_ref().get_u32()
     }
 }
 
@@ -265,7 +265,7 @@ impl BytesComparableScore for u64 {
     where
         Self: Sized,
     {
-        b[1..].as_ref().to_bytes().get_u64()
+        b[1..].as_ref().get_u64()
     }
 }
 
@@ -373,7 +373,7 @@ impl KeyMeta {
         let key_type = KeyType::from_u8(buf.get_u8()).unwrap_or(KeyType::Map);
         let count = buf.get_u64();
         let extra = if buf.remaining() > 0 {
-            Some(buf.bytes().to_vec())
+            Some(buf.to_vec())
         } else {
             None
         };
