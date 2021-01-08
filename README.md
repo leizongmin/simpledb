@@ -76,6 +76,11 @@ sorted_set_delete     | yes        |  19,920
 
 ## Changelog
 
+#### v0.1.4
+
+- fix(encoding): to_bytes() method not found in `&[u8]`;
+- update dependencies `rand` to `v0.8`, `bytes` to `v1.0`;
+
 #### v0.1.3
 
 - feat: add `sorted set` data type.
