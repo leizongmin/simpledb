@@ -48,32 +48,31 @@ Example codes from `benchmark` directory.
 
 method                | write      | op/s
 ----------------------|------------|----------
-map_put               | yes        | &nbsp;62,539
+map_put               | yes        |  62,539
 map_get               |            | 355,871
 map_count             |            | 735,294
-map_delete            | yes        | &nbsp;62,656
-set_add               | yes        | &nbsp;64,724
+map_delete            | yes        |  62,656
+set_add               | yes        |  64,724
 set_count             |            | 813,008
 set_is_member         |            | 380,228
-set_delete            | yes        | &nbsp;61,349
-list_left_push        | yes        | &nbsp;68,775
+set_delete            | yes        |  61,349
+list_left_push        | yes        |  68,775
 list_count            |            | 666,666
-list_left_pop         | yes        | &nbsp;60,277
-list_right_push       | yes        | &nbsp;64,641
+list_left_pop         | yes        |  60,277
+list_right_push       | yes        |  64,641
 list_count            |            | 609,756
-list_right_pop        | yes        | &nbsp;56,433
-sorted_list_add       | yes        | &nbsp;68,493
+list_right_pop        | yes        |  56,433
+sorted_list_add       | yes        |  68,493
 sorted_list_count     |            | 588,235
-sorted_list_left_pop  | yes        | &nbsp;14,880
-sorted_list_add       | yes        | &nbsp;67,114
-sorted_list_right_pop | yes        | &nbsp;&nbsp;7,923
-sorted_set_add        | yes        | &nbsp;47,393
+sorted_list_left_pop  | yes        |  14,880
+sorted_list_add       | yes        |  67,114
+sorted_list_right_pop | yes        |   7,923
+sorted_set_add        | yes        |  47,393
 sorted_set_is_member  |            | 285,714
 sorted_set_count      |            | 500,000
-sorted_set_left       | yes        | &nbsp;16,181
-sorted_set_right      | yes        | &nbsp;&nbsp;9,082
-sorted_set_delete     | yes        | &nbsp;19,920
-```
+sorted_set_left       | yes        |  16,181
+sorted_set_right      | yes        |   9,082
+sorted_set_delete     | yes        |  19,920
 
 ## Changelog
 
