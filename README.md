@@ -38,6 +38,43 @@ fn main() {
 - **sorted set**: store sorted score/value pairs, includes the following operations with `sorted_set_` prefix: `add`, `is_member`, `delete`, `left`, `right`, `for_each`, `items`.
 - Notes: the difference between `sorted list` and `sorted set` is `list` allow the same members, `set` does not allow the same members.
 
+## Benchmark
+
+Example codes from `benchmark` directory.
+
+- rustc 1.51.0-nightly (44e3daf5e 2020-12-31)
+- macOS Big Sur 11.1
+- Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz, MacBook Pro (15-inch, 2016)
+
+method                | write      | op/s
+----------------------|------------|----------
+map_put               | yes        | &nbsp;62,539
+map_get               |            | 355,871
+map_count             |            | 735,294
+map_delete            | yes        | &nbsp;62,656
+set_add               | yes        | &nbsp;64,724
+set_count             |            | 813,008
+set_is_member         |            | 380,228
+set_delete            | yes        | &nbsp;61,349
+list_left_push        | yes        | &nbsp;68,775
+list_count            |            | 666,666
+list_left_pop         | yes        | &nbsp;60,277
+list_right_push       | yes        | &nbsp;64,641
+list_count            |            | 609,756
+list_right_pop        | yes        | &nbsp;56,433
+sorted_list_add       | yes        | &nbsp;68,493
+sorted_list_count     |            | 588,235
+sorted_list_left_pop  | yes        | &nbsp;14,880
+sorted_list_add       | yes        | &nbsp;67,114
+sorted_list_right_pop | yes        | &nbsp;&nbsp;7,923
+sorted_set_add        | yes        | &nbsp;47,393
+sorted_set_is_member  |            | 285,714
+sorted_set_count      |            | 500,000
+sorted_set_left       | yes        | &nbsp;16,181
+sorted_set_right      | yes        | &nbsp;&nbsp;9,082
+sorted_set_delete     | yes        | &nbsp;19,920
+```
+
 ## Changelog
 
 #### v0.1.3
