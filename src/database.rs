@@ -19,6 +19,10 @@ pub struct Database {
     next_key_id: Cell<u64>,
 }
 
+unsafe impl Send for Database {}
+
+unsafe impl Sync for Database {}
+
 /// Options for open a database.
 pub struct Options {
     /// RocksDB options.

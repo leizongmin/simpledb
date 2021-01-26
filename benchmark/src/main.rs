@@ -1,13 +1,15 @@
-use simpledb::encoding::get_score_bytes;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+
+use simpledb::encoding::get_score_bytes;
 
 #[macro_use]
 pub mod common;
 
 fn main() {
     test_multi_threading();
+    test_multi_threading2();
     test_map();
     test_set();
     test_list();
@@ -26,6 +28,27 @@ fn test_multi_threading() {
         });
     }
     thread::sleep(Duration::from_millis(50));
+}
+
+fn test_multi_threading2() {
+    let db = open_database!();
+    let db = Arc::new(db);
+    let threads: Vec<_> = (0..10)
+        .map(|_| {
+            let db = db.clone();
+            thread::spawn(move || {
+                let mut counter = 0;
+                for v in 0..1000 {
+                    db.get_meta("a").unwrap();
+                    db.map_put("a", "a", "aaa".as_bytes()).unwrap();
+                    counter += 1;
+                }
+                (counter, std::time::SystemTime::now())
+            })
+        })
+        .collect();
+    let results: Vec<_> = threads.into_iter().map(|t| t.join().unwrap()).collect();
+    println!("{:?}", results);
 }
 
 fn test_map() {
