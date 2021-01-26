@@ -85,6 +85,7 @@ sorted_set_delete     | yes        |  19,920
 
 - fix(deps): update rust crate `rocksdb` to `v0.16`
 - fix(deps): update rust crate `rand` to `v0.8.3`
+- fix: Allow Database to be shared across threads;
 
 #### v0.1.4
 
