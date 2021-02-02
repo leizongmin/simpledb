@@ -9,4 +9,4 @@ publish = false
 
 [dependencies]
 simpledb = { path="../" }
-rand = "0.8.2"
+rand = "0.8.3"
