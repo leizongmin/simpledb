@@ -1,6 +1,6 @@
 [package]
 name = "simpledb"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Zongmin Lei <leizongmin@gmail.com>"]
 edition = "2018"
 description = "NoSQL embedded database on top of RocksDB"
