@@ -54,8 +54,7 @@ store sorted score/value pairs, includes the following methods with `sorted_set_
 
 ---
 
-**Notes: the difference between `sorted list` and `sorted set` is `list` allow the same members, `set` does not allow
-the same members.**
+**Notes: the difference between the **sorted list** and **sorted set** is that **list** allow the same members, **set** does not not**
 
 ## Benchmark
 
