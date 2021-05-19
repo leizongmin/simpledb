@@ -7,9 +7,9 @@ use rocksdb::{
     Direction, Error as RocksDBError, IteratorMode, Options as RocksDBOptions, ReadOptions, DB,
 };
 
-use crate::encoding::{encode_data_key, has_prefix, KeyType};
+use crate::codec::{encode_data_key, has_prefix, KeyType};
 
-use super::encoding::*;
+use super::codec::*;
 
 /// Database instance.
 pub struct Database {

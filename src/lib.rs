@@ -22,10 +22,10 @@
 mod database;
 
 /// Encoding utilities.
-pub mod encoding;
+pub mod codec;
 
+pub use codec::{BytesComparableScore, KeyMeta, KeyType};
 pub use database::{Database, Options, Result};
-pub use encoding::{BytesComparableScore, KeyMeta, KeyType};
 
 /// Re-exports the rocksdb crate.
 pub mod rocksdb {

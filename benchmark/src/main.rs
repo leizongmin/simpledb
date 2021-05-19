@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use simpledb::encoding::get_score_bytes;
+use simpledb::codec::get_score_bytes;
 
 #[macro_use]
 pub mod common;
