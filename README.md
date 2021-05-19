@@ -6,7 +6,7 @@
 
 NoSQL embedded database on top of RocksDB.
 
-Documents: https://docs.rs/simpledb
+API Documents: https://docs.rs/simpledb
 
 ## Quick Start
 
@@ -14,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-simpledb = "0.1"
+simpledb = "0.1.5"
 ```
 
 Example:
@@ -34,7 +34,7 @@ fn main() {
 
 ### Map
 
-Store field/value pairs, includes the following methods with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
+Store key/value pairs, includes the following methods with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
 
 ### Set
 
@@ -46,15 +46,11 @@ Store ordered values, includes the following methods with `list_` prefix: `left_
 
 ### Sorted List
 
-Store sorted score/value pairs, includes the following methods with `sorted_list_` prefix: `add`, `left_pop`, `right_pop`, `count`, `for_each`, `items`.
+Store sorted score/value pairs, may including multiple pairs, includes the following methods with `sorted_list_` prefix: `add`, `left_pop`, `right_pop`, `count`, `for_each`, `items`.
 
 ### Sorted Set
 
-store sorted score/value pairs, includes the following methods with `sorted_set_` prefix: `add`, `is_member`, `delete`, `left`, `right`, `for_each`, `items`.
-
----
-
-**Notes: the difference between the **sorted list** and **sorted set** is that **list** allow the same members, **set** does not not**
+Store sorted unique score/value pairs, includes the following methods with `sorted_set_` prefix: `add`, `is_member`, `delete`, `left`, `right`, `for_each`, `items`.
 
 ## Benchmark
 
