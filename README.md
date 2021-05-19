@@ -8,7 +8,7 @@ NoSQL embedded database on top of RocksDB.
 
 Documents: https://docs.rs/simpledb
 
-## Usage
+## Quick Start
 
 Add this to your `Cargo.toml`:
 
@@ -30,20 +30,32 @@ fn main() {
 }
 ```
 
-## Supported Data Type
+## Data Types and Methods
 
-- **map**: Store field/value pairs, includes the following operations with `map_` prefix: `get`, `put`, `delete`
-  , `count`, `for_each`, `items`.
-- **set**: Store unique values, includes the following operations with `set_` prefix: `add`, `is_member`, `delete`
-  , `count`, `for_each`, `items`.
-- **list**: Store ordered values, includes the following operations with `list_` prefix: `left_push`, `left_pop`
-  , `right_push`, `right_pop`, `count`, `for_each`, `items`.
-- **sorted list**: Store sorted score/value pairs, includes the following operations with `sorted_list_` prefix: `add`
-  , `left_pop`, `right_pop`, `count`, `for_each`, `items`.
-- **sorted set**: store sorted score/value pairs, includes the following operations with `sorted_set_` prefix: `add`
-  , `is_member`, `delete`, `left`, `right`, `for_each`, `items`.
-- Notes: the difference between `sorted list` and `sorted set` is `list` allow the same members, `set` does not allow
-  the same members.
+### Map
+
+Store field/value pairs, includes the following methods with `map_` prefix: `get`, `put`, `delete`, `count`, `for_each`, `items`.
+
+### Set
+
+Store unique values, includes the following methods with `set_` prefix: `add`, `is_member`, `delete`, `count`, `for_each`, `items`.
+
+### List
+
+Store ordered values, includes the following methods with `list_` prefix: `left_push`, `left_pop`, `right_push`, `right_pop`, `count`, `for_each`, `items`.
+
+### Sorted List
+
+Store sorted score/value pairs, includes the following methods with `sorted_list_` prefix: `add`, `left_pop`, `right_pop`, `count`, `for_each`, `items`.
+
+### Sorted Set
+
+store sorted score/value pairs, includes the following methods with `sorted_set_` prefix: `add`, `is_member`, `delete`, `left`, `right`, `for_each`, `items`.
+
+---
+
+**Notes: the difference between `sorted list` and `sorted set` is `list` allow the same members, `set` does not allow
+the same members.**
 
 ## Benchmark
 
