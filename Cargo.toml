@@ -16,4 +16,4 @@ bytes = "1.0.1"
 rocksdb = "0.16.0"
 
 [dev-dependencies]
-rand = "0.8.3"
+rand = "0.8.4"
