@@ -1,5 +1,11 @@
 # Changelog
 
+#### v0.1.6
+
+- fix(deps): update rust crate `bytes` to `1.1.0`
+- fix(deps): update rust crate `rocksdb` to `0.17.0`
+- chore(deps): update rust crate `rand` to `0.8.4`
+
 #### v0.1.5
 
 - fix(deps): update rust crate `rocksdb` to `v0.16`
