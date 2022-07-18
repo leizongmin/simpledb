@@ -1,5 +1,9 @@
 name: Rust
 
+permissions:
+  deployments: write
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -35,10 +39,13 @@ jobs:
         args: --all-features
 
     - name: Run benchmark
-      run: cargo bench -- --output-format bencher | tee target/criterion.txt
+      run: cargo bench -- --output-format bencher | tee criterion.txt
 
-    - name: Store benchmark result
+    - name: push benchmark github page
       uses: benchmark-action/github-action-benchmark@v1
       with:
           tool: 'cargo'
-          output-file-path: target/criterion.txt
+          output-file-path: criterion.txt
+          comment-on-alert: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
