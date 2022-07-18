@@ -1,6 +1,4 @@
-use std::cell::Cell;
-use std::fmt::Formatter;
-use std::string::FromUtf8Error;
+use std::{cell::Cell, fmt::Formatter, path::Path, string::FromUtf8Error};
 
 use bytes::{BufMut, BytesMut};
 use rocksdb::{
@@ -79,15 +77,16 @@ impl From<RocksDBError> for Error {
 
 impl Database {
     /// Open database with default options.
-    pub fn open(path: &str) -> Result<Database> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Database> {
         Database::open_with_options(path, Options::default())
     }
 
     /// Open database with specific options.
-    pub fn open_with_options(path: &str, options: Options) -> Result<Database> {
+    pub fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Database> {
+        let path = path.as_ref();
         let db = DB::open(&options.rocksdb_options, path)?;
         let mut db = Database {
-            path: String::from(path),
+            path: path.display().to_string(),
             rocksdb: db,
             options,
             next_key_id: Cell::new(1),
@@ -97,7 +96,7 @@ impl Database {
     }
 
     /// Destroy database.
-    pub fn destroy(path: &str) -> Result<()> {
+    pub fn destroy(path: impl AsRef<Path>) -> Result<()> {
         Ok(DB::destroy(&RocksDBOptions::default(), path)?)
     }
 
@@ -128,7 +127,12 @@ impl Database {
         }
     }
 
-    pub fn save_meta(&self, key: &str, meta: &KeyMeta, delete_if_empty: bool) -> Result<()> {
+    pub fn save_meta(
+        &self,
+        key: impl AsRef<[u8]>,
+        meta: &KeyMeta,
+        delete_if_empty: bool,
+    ) -> Result<()> {
         if self.options.delete_meta_when_empty && delete_if_empty && meta.count < 1 {
             Ok(self.rocksdb.delete(encode_meta_key(key))?)
         } else {
@@ -136,14 +140,15 @@ impl Database {
         }
     }
 
-    pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>> {
+    pub fn get_meta(&self, key: impl AsRef<[u8]>) -> Result<Option<KeyMeta>> {
         Ok(self
             .rocksdb
             .get(encode_meta_key(key))
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))?)
     }
 
-    pub fn get_or_create_meta(&self, key: &str, key_type: KeyType) -> Result<KeyMeta> {
+    pub fn get_or_create_meta(&self, key: impl AsRef<[u8]>, key_type: KeyType) -> Result<KeyMeta> {
+        let key = key.as_ref();
         let m = self.get_meta(key)?;
         match m {
             Some(m) => Ok(m),
@@ -287,7 +292,7 @@ impl Database {
         }
     }
 
-    pub fn get_count(&self, key: &str) -> Result<u64> {
+    pub fn get_count(&self, key: impl AsRef<[u8]>) -> Result<u64> {
         let meta = self.get_meta(key)?;
         Ok(match meta {
             Some(m) => m.count,
@@ -322,17 +327,27 @@ impl Database {
         Ok(deletes_count)
     }
 
-    pub fn map_count(&self, key: &str) -> Result<u64> {
+    pub fn map_count(&self, key: impl AsRef<[u8]>) -> Result<u64> {
         self.get_count(key)
     }
 
-    pub fn map_get(&self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
+    pub fn map_get(
+        &self,
+        key: impl AsRef<[u8]>,
+        field: impl AsRef<[u8]>,
+    ) -> Result<Option<Vec<u8>>> {
         let meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         Ok(self.rocksdb.get(full_key)?)
     }
 
-    pub fn map_put(&self, key: &str, field: &str, value: &[u8]) -> Result<()> {
+    pub fn map_put(
+        &self,
+        key: impl AsRef<[u8]>,
+        field: impl AsRef<[u8]>,
+        value: impl AsRef<[u8]>,
+    ) -> Result<()> {
+        let key = key.as_ref();
         let mut meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         if self.rocksdb.get(&full_key)?.is_none() {
@@ -342,7 +357,8 @@ impl Database {
         self.save_meta(key, &meta, false)
     }
 
-    pub fn map_delete(&self, key: &str, field: &str) -> Result<bool> {
+    pub fn map_delete(&self, key: impl AsRef<[u8]>, field: impl AsRef<[u8]>) -> Result<bool> {
+        let key = key.as_ref();
         match self.get_meta(key)? {
             None => Ok(false),
             Some(mut meta) => {

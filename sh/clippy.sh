@@ -7,5 +7,5 @@ if ! hash cargo-clippy 2>/dev/null; then
 fi
 
 git add -u && git commit -m'.' || true
-cargo +nightly clippy --fix -Z unstable-options -- -A clippy::uninit_assumed_init
+cargo +nightly clippy --all --fix -Z unstable-options -- -A clippy::uninit_assumed_init
 cargo fmt

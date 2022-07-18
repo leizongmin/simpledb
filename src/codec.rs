@@ -18,10 +18,10 @@ pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
 }
 
 /// Encode a meta key.
-pub fn encode_meta_key(key: &str) -> BytesMut {
+pub fn encode_meta_key(key: impl AsRef<[u8]>) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
     buf.put_slice(PREFIX_META);
-    buf.put_slice(key.as_bytes());
+    buf.put_slice(key.as_ref());
     buf
 }
 
@@ -39,8 +39,8 @@ pub fn encode_data_key(key_id: u64) -> BytesMut {
 }
 
 /// Encode data key of `map` item.
-pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
-    let field = field.as_bytes();
+pub fn encode_data_key_map_item(key_id: u64, field: impl AsRef<[u8]>) -> BytesMut {
+    let field = field.as_ref();
     let mut buf = BytesMut::with_capacity(9 + field.len());
     buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
