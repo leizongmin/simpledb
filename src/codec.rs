@@ -2,12 +2,15 @@ use std::string::FromUtf8Error;
 
 use bytes::{Buf, BufMut, BytesMut};
 
+pub type ScoreVal = (Box<[u8]>, Box<[u8]>);
+pub type VecScoreVal = Vec<ScoreVal>;
+
 /// Key prefix for meta data.
-pub static PREFIX_META: &'static [u8] = b"m";
+pub static PREFIX_META: &[u8] = b"m";
 /// Key prefix for row data.
-pub static PREFIX_DATA: &'static [u8] = b"d";
+pub static PREFIX_DATA: &[u8] = b"d";
 /// Fill data for empty row.
-pub static FILL_EMPTY_DATA: &'static [u8] = b"";
+pub static FILL_EMPTY_DATA: &[u8] = b"";
 
 /// Ensure a key name has a specific prefix.
 pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
@@ -15,10 +18,10 @@ pub fn has_prefix(prefix: &[u8], key: &[u8]) -> bool {
 }
 
 /// Encode a meta key.
-pub fn encode_meta_key(key: &str) -> BytesMut {
+pub fn encode_meta_key(key: impl AsRef<[u8]>) -> BytesMut {
     let mut buf = BytesMut::with_capacity(9);
     buf.put_slice(PREFIX_META);
-    buf.put_slice(key.as_bytes());
+    buf.put_slice(key.as_ref());
     buf
 }
 
@@ -36,8 +39,8 @@ pub fn encode_data_key(key_id: u64) -> BytesMut {
 }
 
 /// Encode data key of `map` item.
-pub fn encode_data_key_map_item(key_id: u64, field: &str) -> BytesMut {
-    let field = field.as_bytes();
+pub fn encode_data_key_map_item(key_id: u64, field: impl AsRef<[u8]>) -> BytesMut {
+    let field = field.as_ref();
     let mut buf = BytesMut::with_capacity(9 + field.len());
     buf.put_slice(PREFIX_DATA);
     buf.put_u64(key_id);
@@ -141,12 +144,12 @@ pub fn decode_data_key_sorted_set_item_with_score(
 /// Compare bytes of two scores. It the first item is greater than the second score, returns 1;
 /// If the first item is less than the second item, returns -1; Or else returns 0.
 pub fn compare_score_bytes(a: &[u8], b: &[u8]) -> i32 {
-    if a > b {
-        1
-    } else if a < b {
-        -1
-    } else {
-        0
+    use std::cmp::Ordering;
+
+    match a.cmp(b) {
+        Ordering::Greater => 1,
+        Ordering::Less => -1,
+        Ordering::Equal => 0,
     }
 }
 
@@ -285,7 +288,7 @@ where
 
 pub fn get_next_upper_bound(bound: &[u8]) -> Vec<u8> {
     let mut next: Vec<i16> = Vec::from(bound).iter().map(|v| *v as i16).collect();
-    if next.iter().find(|v| **v != 255).is_none() {
+    if !next.iter().any(|v| *v != 255) {
         next.push(0);
     } else {
         let end = bound.len() - 1;
