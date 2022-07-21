@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1658423304374,
+  "lastUpdate": 1658423307520,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -67,6 +67,38 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 11448,
             "range": "± 96",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "leizongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "name": "leizongmin",
+            "username": "leizongmin"
+          },
+          "id": "055d019e9bab66c63afe6c1fc87e926486ecdd6c",
+          "message": "chore(deps): update boa-dev/criterion-compare-action action to v3.2.2",
+          "timestamp": "2022-07-17T15:11:27Z",
+          "url": "https://github.com/leizongmin/simpledb/pull/21/commits/055d019e9bab66c63afe6c1fc87e926486ecdd6c"
+        },
+        "date": 1658423306699,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 12911,
+            "range": "± 3921",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 11478,
+            "range": "± 220",
             "unit": "ns/iter"
           }
         ]
