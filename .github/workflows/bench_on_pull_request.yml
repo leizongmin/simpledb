@@ -1,0 +1,24 @@
+on:
+  workflow_dispatch:
+  pull_request:
+
+name: benchmark pull requests
+
+jobs:
+  runBenchmark:
+    name: run benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: clippy
+            override: true
+
+      - uses: actions/checkout@master
+      - uses: boa-dev/criterion-compare-action@v3.0.0
+        with:
+          defaultFeatures: true
+          branchName: ${{ github.base_ref }}
+          # Optional. Default is `${{ github.token }}`.
+          token: ${{ secrets.GITHUB_TOKEN }}

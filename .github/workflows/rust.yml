@@ -1,6 +1,9 @@
 name: Rust
 
+permissions: write-all
+
 on:
+  workflow_dispatch:
   push:
     branches: [ master ]
   pull_request:
@@ -12,8 +15,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+    - uses: actions-rs/toolchain@v1
+      with:
+          toolchain: nightly
+          components: clippy
+          override: true
+
+    - uses: Swatinem/rust-cache@v2
+
     - uses: actions/checkout@v3
+
     - name: Build
       run: cargo build --verbose
+
     - name: Run tests
-      run: cargo test --verbose
+      run: |
+        cargo test -- --format=pretty --nocapture
+
+    - name: Run benchmark
+      run: |
+        cargo install cargo-criterion
+        cargo +nightly criterion --output-format bencher 2> >(tee -a criterion.log >&2)
+
+    - name: push benchmark github page
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+          tool: 'cargo'
+          output-file-path: criterion.log
+          comment-on-alert: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+
+    - name: clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features

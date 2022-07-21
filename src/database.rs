@@ -1,15 +1,11 @@
-use std::cell::Cell;
-use std::fmt::Formatter;
-use std::string::FromUtf8Error;
+use std::{cell::Cell, fmt::Formatter, path::Path, string::FromUtf8Error};
 
 use bytes::{BufMut, BytesMut};
 use rocksdb::{
     Direction, Error as RocksDBError, IteratorMode, Options as RocksDBOptions, ReadOptions, DB,
 };
 
-use crate::codec::{encode_data_key, has_prefix, KeyType};
-
-use super::codec::*;
+use crate::codec::*;
 
 /// Database instance.
 pub struct Database {
@@ -50,16 +46,16 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    FromUtf8Error(FromUtf8Error),
-    RocksDBError(RocksDBError),
+    FromUtf8(FromUtf8Error),
+    RocksDB(RocksDBError),
     Message(String),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::FromUtf8Error(err) => write!(f, "FromUtf8Error: {}", err),
-            Error::RocksDBError(err) => write!(f, "RocksDBError: {}", err),
+            Error::FromUtf8(err) => write!(f, "FromUtf8Error: {}", err),
+            Error::RocksDB(err) => write!(f, "RocksDBError: {}", err),
             Error::Message(err) => write!(f, "Error: {}", err),
         }
     }
@@ -69,27 +65,28 @@ impl std::error::Error for Error {}
 
 impl From<FromUtf8Error> for Error {
     fn from(e: FromUtf8Error) -> Self {
-        Error::FromUtf8Error(e)
+        Error::FromUtf8(e)
     }
 }
 
 impl From<RocksDBError> for Error {
     fn from(e: RocksDBError) -> Self {
-        Error::RocksDBError(e)
+        Error::RocksDB(e)
     }
 }
 
 impl Database {
     /// Open database with default options.
-    pub fn open(path: &str) -> Result<Database> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Database> {
         Database::open_with_options(path, Options::default())
     }
 
     /// Open database with specific options.
-    pub fn open_with_options(path: &str, options: Options) -> Result<Database> {
+    pub fn open_with_options(path: impl AsRef<Path>, options: Options) -> Result<Database> {
+        let path = path.as_ref();
         let db = DB::open(&options.rocksdb_options, path)?;
         let mut db = Database {
-            path: String::from(path),
+            path: path.display().to_string(),
             rocksdb: db,
             options,
             next_key_id: Cell::new(1),
@@ -99,7 +96,7 @@ impl Database {
     }
 
     /// Destroy database.
-    pub fn destroy(path: &str) -> Result<()> {
+    pub fn destroy(path: impl AsRef<Path>) -> Result<()> {
         Ok(DB::destroy(&RocksDBOptions::default(), path)?)
     }
 
@@ -130,7 +127,12 @@ impl Database {
         }
     }
 
-    pub fn save_meta(&self, key: &str, meta: &KeyMeta, delete_if_empty: bool) -> Result<()> {
+    pub fn save_meta(
+        &self,
+        key: impl AsRef<[u8]>,
+        meta: &KeyMeta,
+        delete_if_empty: bool,
+    ) -> Result<()> {
         if self.options.delete_meta_when_empty && delete_if_empty && meta.count < 1 {
             Ok(self.rocksdb.delete(encode_meta_key(key))?)
         } else {
@@ -138,16 +140,17 @@ impl Database {
         }
     }
 
-    pub fn get_meta(&self, key: &str) -> Result<Option<KeyMeta>> {
+    pub fn get_meta(&self, key: impl AsRef<[u8]>) -> Result<Option<KeyMeta>> {
         Ok(self
             .rocksdb
             .get(encode_meta_key(key))
             .map(|v| v.map(|v| KeyMeta::from_bytes(v.as_slice())))?)
     }
 
-    pub fn get_or_create_meta(&self, key: &str, key_type: KeyType) -> Result<KeyMeta> {
+    pub fn get_or_create_meta(&self, key: impl AsRef<[u8]>, key_type: KeyType) -> Result<KeyMeta> {
+        let key = key.as_ref();
         let m = self.get_meta(key)?;
-        return match m {
+        match m {
             Some(m) => Ok(m),
             None => {
                 let m = KeyMeta::new(self.next_key_id.get(), key_type);
@@ -155,7 +158,7 @@ impl Database {
                 self.save_meta(key, &m, false)?;
                 Ok(m)
             }
-        };
+        }
     }
 
     pub fn for_each_key<F>(&self, mut f: F) -> Result<usize>
@@ -165,7 +168,7 @@ impl Database {
         let mut counter: usize = 0;
         let mut has_error = None;
         self.prefix_iterator(PREFIX_META, |k, v| {
-            counter = counter + 1;
+            counter += 1;
             match decode_meta_key(k.as_ref()) {
                 Ok(key) => f(key.as_str(), &KeyMeta::from_bytes(v.as_ref())),
                 Err(err) => {
@@ -187,7 +190,7 @@ impl Database {
         let mut counter: usize = 0;
         let mut has_error = None;
         self.prefix_iterator(PREFIX_META, |k, v| {
-            counter = counter + 1;
+            counter += 1;
             if counter > limit {
                 false
             } else {
@@ -220,7 +223,7 @@ impl Database {
             buf
         };
         self.prefix_iterator(k.as_ref(), |k, v| {
-            counter = counter + 1;
+            counter += 1;
             match decode_meta_key(k.as_ref()) {
                 Ok(key) => f(key.as_str(), &KeyMeta::from_bytes(v.as_ref())),
                 Err(err) => {
@@ -289,7 +292,7 @@ impl Database {
         }
     }
 
-    pub fn get_count(&self, key: &str) -> Result<u64> {
+    pub fn get_count(&self, key: impl AsRef<[u8]>) -> Result<u64> {
         let meta = self.get_meta(key)?;
         Ok(match meta {
             Some(m) => m.count,
@@ -324,17 +327,27 @@ impl Database {
         Ok(deletes_count)
     }
 
-    pub fn map_count(&self, key: &str) -> Result<u64> {
+    pub fn map_count(&self, key: impl AsRef<[u8]>) -> Result<u64> {
         self.get_count(key)
     }
 
-    pub fn map_get(&self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
+    pub fn map_get(
+        &self,
+        key: impl AsRef<[u8]>,
+        field: impl AsRef<[u8]>,
+    ) -> Result<Option<Vec<u8>>> {
         let meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         Ok(self.rocksdb.get(full_key)?)
     }
 
-    pub fn map_put(&self, key: &str, field: &str, value: &[u8]) -> Result<()> {
+    pub fn map_put(
+        &self,
+        key: impl AsRef<[u8]>,
+        field: impl AsRef<[u8]>,
+        value: impl AsRef<[u8]>,
+    ) -> Result<()> {
+        let key = key.as_ref();
         let mut meta = self.get_or_create_meta(key, KeyType::Map)?;
         let full_key = encode_data_key_map_item(meta.id, field);
         if self.rocksdb.get(&full_key)?.is_none() {
@@ -344,7 +357,8 @@ impl Database {
         self.save_meta(key, &meta, false)
     }
 
-    pub fn map_delete(&self, key: &str, field: &str) -> Result<bool> {
+    pub fn map_delete(&self, key: impl AsRef<[u8]>, field: impl AsRef<[u8]>) -> Result<bool> {
+        let key = key.as_ref();
         match self.get_meta(key)? {
             None => Ok(false),
             Some(mut meta) => {
@@ -561,7 +575,7 @@ impl Database {
     where
         F: FnMut(Box<[u8]>) -> bool,
     {
-        self.for_each_data(key, None, |_, v| f(Box::from(v)))
+        self.for_each_data(key, None, |_, v| f(v))
     }
 
     pub fn list_items(&self, key: &str) -> Result<Vec<Box<[u8]>>> {
@@ -593,26 +607,25 @@ impl Database {
         &self,
         key: &str,
         max_score: Option<&[u8]>,
-    ) -> Result<Option<(Box<[u8]>, Box<[u8]>)>> {
+    ) -> Result<Option<ScoreVal>> {
         let meta = self.get_meta(key)?;
-        let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
             let (sequence, left_deleted_count, right_deleted_count) =
                 meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let mut opts = ReadOptions::default();
             opts.set_prefix_same_as_start(true);
-            let iter = self
+            let mut iter = self
                 .rocksdb
                 .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
-            for (k, v) in iter {
+            if let Some((k, v)) = iter.next() {
                 if !has_prefix(&prefix, k.as_ref()) {
-                    break;
+                    return Ok(None);
                 }
                 let score = decode_data_key_sorted_list_item(k.as_ref());
                 if let Some(max_score) = max_score {
                     if compare_score_bytes(score, max_score) > 0 {
-                        break;
+                        return Ok(None);
                     }
                 }
                 self.rocksdb.delete(k.as_ref())?;
@@ -631,37 +644,35 @@ impl Database {
                     );
                 }
                 self.save_meta(key, &meta, true)?;
-                ret = Some((Box::from(score), v));
-                break;
+                return Ok(Some((Box::from(score), v)));
             }
         }
-        Ok(ret)
+        Ok(None)
     }
 
     pub fn sorted_list_right_pop(
         &self,
         key: &str,
         min_score: Option<&[u8]>,
-    ) -> Result<Option<(Box<[u8]>, Box<[u8]>)>> {
+    ) -> Result<Option<ScoreVal>> {
         let meta = self.get_meta(key)?;
-        let mut ret: Option<(Box<[u8]>, Box<[u8]>)> = None;
         if let Some(mut meta) = meta {
             let (sequence, left_deleted_count, right_deleted_count) =
                 meta.decode_sorted_list_extra();
             let prefix = encode_data_key(meta.id);
             let next_prefix = encode_data_key(meta.id + 1);
             let opts = ReadOptions::default();
-            let iter = self
+            let mut iter = self
                 .rocksdb
                 .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
-            for (k, v) in iter {
+            if let Some((k, v)) = iter.next() {
                 if !has_prefix(&prefix, k.as_ref()) {
-                    break;
+                    return Ok(None);
                 }
                 let score = decode_data_key_sorted_list_item(k.as_ref());
                 if let Some(min_score) = min_score {
                     if compare_score_bytes(score, min_score) < 0 {
-                        break;
+                        return Ok(None);
                     }
                 }
                 self.rocksdb.delete(k.as_ref())?;
@@ -680,11 +691,10 @@ impl Database {
                     );
                 }
                 self.save_meta(key, &meta, true)?;
-                ret = Some((Box::from(score), v));
-                break;
+                return Ok(Some((Box::from(score), v)));
             }
         }
-        Ok(ret)
+        Ok(None)
     }
 
     pub fn sorted_list_for_each<F>(&self, key: &str, mut f: F) -> Result<u64>
@@ -693,11 +703,11 @@ impl Database {
     {
         self.for_each_data(key, None, |k, v| {
             let score = decode_data_key_sorted_list_item(k.as_ref());
-            f((Box::from(score), Box::from(v)))
+            f((Box::from(score), v))
         })
     }
 
-    pub fn sorted_list_items(&self, key: &str) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+    pub fn sorted_list_items(&self, key: &str) -> Result<VecScoreVal> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.sorted_list_for_each(key, |item| {
@@ -727,7 +737,7 @@ impl Database {
         })
     }
 
-    pub fn sorted_set_items(&self, key: &str) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+    pub fn sorted_set_items(&self, key: &str) -> Result<VecScoreVal> {
         let count = self.get_count(key)?;
         let mut vec = Vec::with_capacity(count as u64 as usize);
         self.sorted_set_for_each(key, |v| {
@@ -812,7 +822,7 @@ impl Database {
         key: &str,
         max_score: Option<&[u8]>,
         limit: usize,
-    ) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+    ) -> Result<VecScoreVal> {
         match self.get_meta(key)? {
             None => Ok(vec![]),
             Some(meta) => {
@@ -850,7 +860,7 @@ impl Database {
         key: &str,
         min_score: Option<&[u8]>,
         limit: usize,
-    ) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>> {
+    ) -> Result<VecScoreVal> {
         match self.get_meta(key)? {
             None => Ok(vec![]),
             Some(meta) => {

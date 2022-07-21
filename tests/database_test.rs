@@ -1,5 +1,5 @@
 use common::*;
-use simpledb::codec::{get_score_bytes, get_score_from_bytes, KeyType};
+use simpledb::codec::{get_score_bytes, get_score_from_bytes, KeyType, VecScoreVal};
 
 pub mod common;
 
@@ -116,15 +116,15 @@ fn test_map() {
         assert_eq!("aaa", f);
         assert_eq!("123", vec_to_str(v.to_vec()));
 
-        assert_eq!(true, db.map_delete(key, "aaa").unwrap());
-        assert_eq!(true, db.map_delete(key, "bbb").unwrap());
-        assert_eq!(false, db.map_delete(key, "ddd").unwrap());
+        assert!(db.map_delete(key, "aaa").unwrap());
+        assert!(db.map_delete(key, "bbb").unwrap());
+        assert!(!db.map_delete(key, "ddd").unwrap());
         assert_eq!(1, db.map_count(key).unwrap());
 
         dump_database_meta(&db);
         dump_database_data(&db, key);
 
-        assert_eq!(true, db.map_delete(key, "ccc").unwrap());
+        assert!(db.map_delete(key, "ccc").unwrap());
 
         let mut counter = 0;
         db.for_each_key(|_, _| {
@@ -165,15 +165,15 @@ fn test_set() {
         let db = open_database_with_path(&path);
         let key = "hello";
 
-        assert_eq!(false, db.set_is_member(key, "aaa".as_bytes()).unwrap());
+        assert!(!db.set_is_member(key, "aaa".as_bytes()).unwrap());
         assert_eq!(0, db.set_count(key).unwrap());
 
-        assert_eq!(true, db.set_add(key, "aaa".as_bytes()).unwrap());
-        assert_eq!(true, db.set_add(key, "bbb".as_bytes()).unwrap());
-        assert_eq!(false, db.set_add(key, "bbb".as_bytes()).unwrap());
+        assert!(db.set_add(key, "aaa".as_bytes()).unwrap());
+        assert!(db.set_add(key, "bbb".as_bytes()).unwrap());
+        assert!(!db.set_add(key, "bbb".as_bytes()).unwrap());
         assert_eq!(2, db.set_count(key).unwrap());
-        assert_eq!(true, db.set_is_member(key, "aaa".as_bytes()).unwrap());
-        assert_eq!(true, db.set_is_member(key, "bbb".as_bytes()).unwrap());
+        assert!(db.set_is_member(key, "aaa".as_bytes()).unwrap());
+        assert!(db.set_is_member(key, "bbb".as_bytes()).unwrap());
         dump_database_meta(&db);
         dump_database_data(&db, key);
 
@@ -182,11 +182,11 @@ fn test_set() {
         assert_eq!("aaa".as_bytes(), vec.get(0).unwrap().as_ref());
         assert_eq!("bbb".as_bytes(), vec.get(1).unwrap().as_ref());
 
-        assert_eq!(true, db.set_delete(key, "aaa".as_bytes()).unwrap());
-        assert_eq!(false, db.set_delete(key, "aaa".as_bytes()).unwrap());
+        assert!(db.set_delete(key, "aaa".as_bytes()).unwrap());
+        assert!(!db.set_delete(key, "aaa".as_bytes()).unwrap());
         assert_eq!(1, db.set_count(key).unwrap());
-        assert_eq!(false, db.set_is_member(key, "aaa".as_bytes()).unwrap());
-        assert_eq!(true, db.set_is_member(key, "bbb".as_bytes()).unwrap());
+        assert!(!db.set_is_member(key, "aaa".as_bytes()).unwrap());
+        assert!(db.set_is_member(key, "bbb".as_bytes()).unwrap());
         dump_database_meta(&db);
         dump_database_data(&db, key);
     }
@@ -409,10 +409,7 @@ fn test_sorted_set() {
         let db = open_database_with_path(&path);
         let key = "hello";
 
-        assert_eq!(
-            false,
-            db.sorted_set_is_member(key, "aaa".as_bytes()).unwrap()
-        );
+        assert!(!db.sorted_set_is_member(key, "aaa".as_bytes()).unwrap());
         assert_eq!(0, db.set_count(key).unwrap());
         assert_eq!(
             1,
@@ -420,10 +417,7 @@ fn test_sorted_set() {
                 .unwrap()
         );
         assert_eq!(1, db.set_count(key).unwrap());
-        assert_eq!(
-            true,
-            db.sorted_set_is_member(key, "aaa".as_bytes()).unwrap()
-        );
+        assert!(db.sorted_set_is_member(key, "aaa".as_bytes()).unwrap());
 
         assert_eq!(
             2,
@@ -438,7 +432,7 @@ fn test_sorted_set() {
         );
         assert_eq!(3, db.set_count(key).unwrap());
 
-        let parse_results = |vec: Vec<(Box<[u8]>, Box<[u8]>)>| {
+        let parse_results = |vec: VecScoreVal| {
             let values: Vec<String> = vec
                 .iter()
                 .map(|(_, v)| String::from_utf8(v.to_vec()).unwrap())
@@ -492,11 +486,11 @@ fn test_sorted_set() {
         assert_eq!(values, vec!["ccc".to_string(), "aaa".to_string()]);
         assert_eq!(scores, vec![130, 120]);
 
-        assert_eq!(false, db.sorted_set_delete(key, "ddd".as_bytes()).unwrap());
-        assert_eq!(true, db.sorted_set_delete(key, "aaa".as_bytes()).unwrap());
-        assert_eq!(true, db.sorted_set_delete(key, "bbb".as_bytes()).unwrap());
+        assert!(!db.sorted_set_delete(key, "ddd".as_bytes()).unwrap());
+        assert!(db.sorted_set_delete(key, "aaa".as_bytes()).unwrap());
+        assert!(db.sorted_set_delete(key, "bbb".as_bytes()).unwrap());
         assert_eq!(1, db.set_count(key).unwrap());
-        assert_eq!(true, db.sorted_set_delete(key, "ccc".as_bytes()).unwrap());
+        assert!(db.sorted_set_delete(key, "ccc".as_bytes()).unwrap());
         assert_eq!(0, db.set_count(key).unwrap());
 
         dump_database_meta(&db);
