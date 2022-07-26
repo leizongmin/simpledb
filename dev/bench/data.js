@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1658568468092,
+  "lastUpdate": 1658807204353,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -231,6 +231,42 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 12729,
             "range": "± 830",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d527525e8992aa2d3867a558028de6a751e008dc",
+          "message": "Merge pull request #22 from leizongmin/renovate/boa-dev-criterion-compare-action-3.x\n\nchore(deps): update boa-dev/criterion-compare-action action to v3.2.2",
+          "timestamp": "2022-07-26T11:15:46+08:00",
+          "tree_id": "f2ff1b9d84bcab599aa1c3ae6be6852f2bbfc87d",
+          "url": "https://github.com/leizongmin/simpledb/commit/d527525e8992aa2d3867a558028de6a751e008dc"
+        },
+        "date": 1658807202245,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 15809,
+            "range": "± 4235",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 13022,
+            "range": "± 398",
             "unit": "ns/iter"
           }
         ]
