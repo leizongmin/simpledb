@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1660693245353,
+  "lastUpdate": 1661916924012,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -491,6 +491,38 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 18098,
             "range": "± 252",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "leizongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "name": "leizongmin",
+            "username": "leizongmin"
+          },
+          "id": "e35b8777d838668739b0f92e2895c8fdb63959d2",
+          "message": "chore(deps): update rust crate anyhow to 1.0.62",
+          "timestamp": "2022-08-09T22:11:38Z",
+          "url": "https://github.com/leizongmin/simpledb/pull/24/commits/e35b8777d838668739b0f92e2895c8fdb63959d2"
+        },
+        "date": 1661916923473,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 20170,
+            "range": "± 1295",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 17221,
+            "range": "± 276",
             "unit": "ns/iter"
           }
         ]
