@@ -117,14 +117,12 @@ impl Database {
         let iter = self
             .rocksdb
             .iterator(IteratorMode::From(prefix, Direction::Forward));
-        for item in iter {
-            if let Ok((k, v)) = item {
-                if !has_prefix(prefix, k.as_ref()) {
-                    break;
-                }
-                if !f(k, v) {
-                    break;
-                }
+        for (k, v) in iter.flatten() {
+            if !has_prefix(prefix, k.as_ref()) {
+                break;
+            }
+            if !f(k, v) {
+                break;
             }
         }
     }
@@ -399,7 +397,7 @@ impl Database {
 
     pub fn map_items(&self, key: &str) -> Result<Vec<(String, Box<[u8]>)>> {
         let count = self.get_count(key)?;
-        let mut vec = Vec::with_capacity(count as u64 as usize);
+        let mut vec = Vec::with_capacity(count as usize);
         self.map_for_each(key, |f, v| {
             vec.push((String::from(f), v));
             true
@@ -499,7 +497,7 @@ impl Database {
 
     pub fn set_items(&self, key: &str) -> Result<Vec<Box<[u8]>>> {
         let count = self.get_count(key)?;
-        let mut vec = Vec::with_capacity(count as u64 as usize);
+        let mut vec = Vec::with_capacity(count as usize);
         self.set_for_each(key, |v| {
             vec.push(v);
             true
@@ -582,7 +580,7 @@ impl Database {
 
     pub fn list_items(&self, key: &str) -> Result<Vec<Box<[u8]>>> {
         let count = self.get_count(key)?;
-        let mut vec = Vec::with_capacity(count as u64 as usize);
+        let mut vec = Vec::with_capacity(count as usize);
         self.list_for_each(key, |v| {
             vec.push(v);
             true
@@ -713,7 +711,7 @@ impl Database {
 
     pub fn sorted_list_items(&self, key: &str) -> Result<VecScoreVal> {
         let count = self.get_count(key)?;
-        let mut vec = Vec::with_capacity(count as u64 as usize);
+        let mut vec = Vec::with_capacity(count as usize);
         self.sorted_list_for_each(key, |item| {
             vec.push(item);
             true
@@ -743,7 +741,7 @@ impl Database {
 
     pub fn sorted_set_items(&self, key: &str) -> Result<VecScoreVal> {
         let count = self.get_count(key)?;
-        let mut vec = Vec::with_capacity(count as u64 as usize);
+        let mut vec = Vec::with_capacity(count as usize);
         self.sorted_set_for_each(key, |v| {
             vec.push(v);
             true
