@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676707240789,
+  "lastUpdate": 1676707520150,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -847,6 +847,42 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 16650,
             "range": "± 356",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea6543f0af7ebd0840d24f987b7c7b0917ced265",
+          "message": "Merge pull request #23 from leizongmin/renovate/bytes-1.x\n\nfix(deps): update rust crate bytes to 1.4.0",
+          "timestamp": "2023-02-18T15:41:05+08:00",
+          "tree_id": "072259859a7292db725ce2b951590f8feb9c8515",
+          "url": "https://github.com/leizongmin/simpledb/commit/ea6543f0af7ebd0840d24f987b7c7b0917ced265"
+        },
+        "date": 1676707519627,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 20581,
+            "range": "± 1203",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 17013,
+            "range": "± 245",
             "unit": "ns/iter"
           }
         ]
