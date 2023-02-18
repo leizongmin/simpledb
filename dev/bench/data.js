@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676708278110,
+  "lastUpdate": 1676710270708,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -955,6 +955,42 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 14153,
             "range": "± 1224",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f5c079e97c11305277429c0e596b552f2f0bda12",
+          "message": "fix: build failed after upgrade rocksdb",
+          "timestamp": "2023-02-18T08:23:45Z",
+          "tree_id": "b18457670acca04030b393301522886568cb9025",
+          "url": "https://github.com/leizongmin/simpledb/commit/f5c079e97c11305277429c0e596b552f2f0bda12"
+        },
+        "date": 1676710269922,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 12624,
+            "range": "± 2413",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 7878,
+            "range": "± 204",
             "unit": "ns/iter"
           }
         ]
