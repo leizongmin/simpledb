@@ -117,12 +117,14 @@ impl Database {
         let iter = self
             .rocksdb
             .iterator(IteratorMode::From(prefix, Direction::Forward));
-        for (k, v) in iter {
-            if !has_prefix(prefix, k.as_ref()) {
-                break;
-            }
-            if !f(k, v) {
-                break;
+        for item in iter {
+            if let Ok((k, v)) = item {
+                if !has_prefix(prefix, k.as_ref()) {
+                    break;
+                }
+                if !f(k, v) {
+                    break;
+                }
             }
         }
     }
@@ -618,7 +620,8 @@ impl Database {
             let mut iter = self
                 .rocksdb
                 .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
-            if let Some((k, v)) = iter.next() {
+            if let Some(item) = iter.next() {
+                let (k, v) = item?;
                 if !has_prefix(&prefix, k.as_ref()) {
                     return Ok(None);
                 }
@@ -665,7 +668,8 @@ impl Database {
             let mut iter = self
                 .rocksdb
                 .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
-            if let Some((k, v)) = iter.next() {
+            if let Some(item) = iter.next() {
+                let (k, v) = item?;
                 if !has_prefix(&prefix, k.as_ref()) {
                     return Ok(None);
                 }
@@ -834,7 +838,8 @@ impl Database {
                 let iter = self
                     .rocksdb
                     .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
-                for (k, _) in iter {
+                for item in iter {
+                    let (k, _) = item?;
                     if !has_prefix(&prefix, k.as_ref()) {
                         break;
                     }
@@ -872,7 +877,8 @@ impl Database {
                 let iter = self
                     .rocksdb
                     .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
-                for (k, _) in iter {
+                for item in iter {
+                    let (k, _) = item?;
                     if !has_prefix(&prefix, k.as_ref()) {
                         break;
                     }
