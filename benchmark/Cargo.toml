@@ -15,4 +15,4 @@ name = "main"
 harness = false
 
 [dev-dependencies]
-criterion = "0.3.6"
+criterion = "0.4.0"
