@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1668975948390,
+  "lastUpdate": 1676707118967,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -683,6 +683,42 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 10112,
             "range": "± 245",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0654e991ca3635a37fc7e88d14072edab1156aa",
+          "message": "Merge pull request #27 from leizongmin/renovate/criterion-0.x\n\nchore(deps): update rust crate criterion to 0.4.0",
+          "timestamp": "2023-02-18T15:35:42+08:00",
+          "tree_id": "38378251abd6f46ac71a084e0914fa217968c639",
+          "url": "https://github.com/leizongmin/simpledb/commit/e0654e991ca3635a37fc7e88d14072edab1156aa"
+        },
+        "date": 1676707118101,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 18761,
+            "range": "± 1739",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 18022,
+            "range": "± 249",
             "unit": "ns/iter"
           }
         ]
