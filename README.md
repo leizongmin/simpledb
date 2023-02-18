@@ -56,42 +56,42 @@ Store sorted unique score/value pairs, includes the following methods with `sort
 
 Example codes from `benchmark` directory.
 
-- rustc 1.51.0-nightly (44e3daf5e 2020-12-31)
-- macOS Big Sur 11.1
-- Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz, MacBook Pro (15-inch, 2016)
+- rustc 1.67.1 (d5a82bbd2 2023-02-07)
+- Ubuntu 18.04
+- Intel(R) Xeon(R) Platinum 8272CL CPU @ 2.60GHz x 16
 
-| method                | write | op/s    |
-| --------------------- | ----- | ------- |
-| map_get               |       | 355,871 |
-| map_count             |       | 735,294 |
-| map_put               | yes   | 62,539  |
-| map_delete            | yes   | 62,656  |
-| set_count             |       | 813,008 |
-| set_is_member         |       | 380,228 |
-| set_add               | yes   | 64,724  |
-| set_delete            | yes   | 61,349  |
-| list_count            |       | 666,666 |
-| list_left_push        | yes   | 68,775  |
-| list_left_pop         | yes   | 60,277  |
-| list_right_push       | yes   | 64,641  |
-| list_right_pop        | yes   | 56,433  |
-| sorted_list_count     |       | 588,235 |
-| sorted_list_add       | yes   | 68,493  |
-| sorted_list_left_pop  | yes   | 14,880  |
-| sorted_list_right_pop | yes   | 7,923   |
-| sorted_set_is_member  |       | 285,714 |
-| sorted_set_count      |       | 500,000 |
-| sorted_set_add        | yes   | 47,393  |
-| sorted_set_left       | yes   | 16,181  |
-| sorted_set_right      | yes   | 9,082   |
-| sorted_set_delete     | yes   | 19,920  |
+| method                | write | op/s      |
+| --------------------- | ----- | --------- |
+| map_get               |       | 662,251   |
+| map_count             |       | 1,369,863 |
+| map_put               |   Y   | 105,152   |
+| map_delete            |   Y   | 99,900    |
+| set_count             |       | 1,639,344 |
+| set_is_member         |       | 746,268   |
+| set_add               |   Y   | 109,409   |
+| set_delete            |   Y   | 105,152   |
+| list_count            |       | 1,136,363 |
+| list_left_push        |   Y   | 116,414   |
+| list_left_pop         |   Y   | 96,339    |
+| list_right_push       |   Y   | 115,207   |
+| list_right_pop        |   Y   | 98,522    |
+| sorted_list_count     |       | 1,666,666 |
+| sorted_list_add       |   Y   | 121,951   |
+| sorted_list_left_pop  |   Y   | 20,080    |
+| sorted_list_right_pop |   Y   | 9,891     |
+| sorted_set_is_member  |       | 666,666   |
+| sorted_set_count      |       | 1,428,571 |
+| sorted_set_add        |   Y   | 83,333    |
+| sorted_set_left       |   Y   | 40,160    |
+| sorted_set_right      |   Y   | 13,793    |
+| sorted_set_delete     |   Y   | 27,548    |
 
 ## License
 
 ```text
 MIT License
 
-Copyright (c) 2020-2021 Zongmin Lei <leizongmin@gmail.com>
+Copyright (c) 2020-2023 LEI Zongmin <leizongmin@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
