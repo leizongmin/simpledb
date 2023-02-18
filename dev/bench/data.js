@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676707543197,
+  "lastUpdate": 1676708278110,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -919,6 +919,42 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 12115,
             "range": "± 807",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82cc1ae6b36bb724cf1e3bc4d0c2329d479b64e8",
+          "message": "Merge pull request #24 from leizongmin/renovate/anyhow-1.x\n\nchore(deps): update rust crate anyhow to 1.0.69",
+          "timestamp": "2023-02-18T15:41:15+08:00",
+          "tree_id": "3fef8576e7b8841c8b09e0807c64c4bdef63c4ef",
+          "url": "https://github.com/leizongmin/simpledb/commit/82cc1ae6b36bb724cf1e3bc4d0c2329d479b64e8"
+        },
+        "date": 1676708277534,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 18381,
+            "range": "± 5084",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 14153,
+            "range": "± 1224",
             "unit": "ns/iter"
           }
         ]
