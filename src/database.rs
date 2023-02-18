@@ -836,8 +836,7 @@ impl Database {
                 let iter = self
                     .rocksdb
                     .iterator_opt(IteratorMode::From(&prefix, Direction::Forward), opts);
-                for item in iter {
-                    let (k, _) = item?;
+                for (k, _) in iter.flatten() {
                     if !has_prefix(&prefix, k.as_ref()) {
                         break;
                     }
@@ -875,8 +874,7 @@ impl Database {
                 let iter = self
                     .rocksdb
                     .iterator_opt(IteratorMode::From(&next_prefix, Direction::Reverse), opts);
-                for item in iter {
-                    let (k, _) = item?;
+                for (k, _) in iter.flatten() {
                     if !has_prefix(&prefix, k.as_ref()) {
                         break;
                     }
