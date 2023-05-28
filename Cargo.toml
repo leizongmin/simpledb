@@ -14,7 +14,7 @@ version = "0.1.7"
 bytes = "1.4.0"
 
 [dependencies.rocksdb]
-version = "0.20.1"
+version = "0.21.0"
 default-features = false
 features = ["zstd", "lz4"]
 
