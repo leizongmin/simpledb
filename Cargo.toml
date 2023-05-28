@@ -23,7 +23,7 @@ anyhow = "1.0.69"
 rand = "0.8.5"
 
 [dev-dependencies.criterion]
-version = "0.4.0"
+version = "0.5.1"
 
 [profile.bench]
 lto = true
