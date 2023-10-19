@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1697722856964,
+  "lastUpdate": 1697722901316,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -1451,6 +1451,38 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 10829,
             "range": "± 335",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "leizongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "name": "leizongmin",
+            "username": "leizongmin"
+          },
+          "id": "4822d0f89adef5b175e8fa0be82ae2fe3709c5f9",
+          "message": "chore(deps): update actions/checkout action to v4",
+          "timestamp": "2023-07-10T01:12:32Z",
+          "url": "https://github.com/leizongmin/simpledb/pull/33/commits/4822d0f89adef5b175e8fa0be82ae2fe3709c5f9"
+        },
+        "date": 1697722900207,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 12220,
+            "range": "± 2273",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 7873,
+            "range": "± 194",
             "unit": "ns/iter"
           }
         ]
