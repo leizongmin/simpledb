@@ -2,7 +2,7 @@
 name = "simpledb-benchmark"
 version = "0.1.0"
 authors = ["Zongmin Lei <leizongmin@gmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,4 +11,4 @@ simpledb = { path = "../" }
 rand = "0.8"
 
 [dev-dependencies]
-criterion = "0.4.0"
+criterion = "0.5"
