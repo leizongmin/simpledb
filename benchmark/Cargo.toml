@@ -10,9 +10,5 @@ publish = false
 simpledb = { path = "../" }
 rand = "0.8"
 
-[[bench]]
-name = "main"
-harness = false
-
 [dev-dependencies]
 criterion = "0.4.0"
