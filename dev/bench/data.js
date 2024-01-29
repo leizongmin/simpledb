@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706512202808,
+  "lastUpdate": 1706512752770,
   "repoUrl": "https://github.com/leizongmin/simpledb",
   "entries": {
     "Benchmark": [
@@ -1647,6 +1647,42 @@ window.BENCHMARK_DATA = {
             "name": "map_get",
             "value": 8152,
             "range": "± 93",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "committer": {
+            "email": "leizongmin@gmail.com",
+            "name": "LEI Zongmin",
+            "username": "leizongmin"
+          },
+          "distinct": true,
+          "id": "2a72d257dd6c5e74eb137e00fd2b0b35c4be6af6",
+          "message": "update dependencies",
+          "timestamp": "2024-01-29T15:01:31+08:00",
+          "tree_id": "dcb7309e8d57022e77b0032a16bf5d4eabfd0739",
+          "url": "https://github.com/leizongmin/simpledb/commit/2a72d257dd6c5e74eb137e00fd2b0b35c4be6af6"
+        },
+        "date": 1706512752237,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "map_put",
+            "value": 12284,
+            "range": "± 1610",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "map_get",
+            "value": 5819,
+            "range": "± 182",
             "unit": "ns/iter"
           }
         ]
